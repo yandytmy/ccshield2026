@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比賽報到核對系統 v2</title>
+<style>
+  :root { --primary: #1E88E5; --success: #43A047; --bg: #f4f4f4; --dark: #333; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; }
+  header { background: var(--dark); color: white; padding: 15px; text-align: center; font-weight: bold; }
+  .container { padding: 15px; max-width: 600px; margin: auto; }
+  .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  
+  /* Input & Select */
+  input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+  
+  /* Member Info Table */
+  .member-row { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+  .member-name { font-weight: bold; color: var(--primary); font-size: 18px; }
+  .member-detail { font-size: 14px; color: #666; }
+
+  /* Checklist Style */
+  .checklist-box { background: #fffbe6; padding: 10px; border-radius: 8px; border: 1px solid #ffe58f; }
+  .check-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; cursor: pointer; }
+  .check-item:last-child { border-bottom: none; }
+  input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; }
+  
+  .select-all-btn { background: #eee; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; cursor: pointer; }
+  
+  button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-success { background: var(--success); color: white; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>📋 幼童軍比賽報到系統</header>
+
+<div class="container">
+  <div id="step1" class="card">
+    <h3>工作人員登入</h3>
+    <input type="text" id="staffName" placeholder="輸入您的姓名">
+    <button class="btn-primary" onclick="goStep2()">進入報到程序</button>
+  </div>
+
+  <div id="step2" class="card hidden">
+    <h3>識別隊伍</h3>
+    <input type="number" id="teamNo" placeholder="請輸入隊號 (01-27)" min="1" max="27">
+    <button class="btn-primary" onclick="loadTeamData()">搜尋隊伍</button>
+    <button style="background:#888; color:white;" onclick="location.reload()">返回登入</button>
+  </div>
+
+  <div id="step3" class="card hidden">
+    <h2 id="displayTeamTitle">隊伍 01 報到清單</h2>
+    <div id="memberListContainer">
+        </div>
+    
+    <hr>
+    <textarea id="remarkG" placeholder="G. 違規狀況備註 (如：領巾顏色、鞋具不符)"></textarea>
+    <button class="btn-success" onclick="finalSubmit()">確認並提交全隊資料</button>
+  </div>
+
+  <div id="step4" class="card hidden" style="text-align: center;">
+    <h2 style="color:var(--success)">✅ 報到已提交</h2>
+    <p>該隊資料已成功傳送到 Google Sheet。</p>
+    <button class="btn-primary" onclick="resetToTeamSelection()">處理下一隊</button>
+  </div>
+</div>
+
+<script>
+// ========== 1. 資料庫 (這部分建議從 Google Sheet 轉為 JSON 貼上) ==========
+const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbyqgap791bh5UI5NuPYK7nA86posKZIGBKESWSc-mv3A6XKnlDzgFY4xK_ZgbN5NkA/exec";
+
+// ========== 2. Google Form 設定 ==========
+const FORM_URL = "https://docs.google.com/forms/d/e/您的ID/formResponse";
+const ENTRIES = {
+    staff: "entry.111111",
+    teamId: "entry.222222",
+    result: "entry.333333", // 儲存所有隊員的檢查結果
+    note: "entry.444444"
+};
+
+let remoteTeamData = null; // 用來儲存從網路上抓到的資料
+let currentStaff = "";
+
+// 網頁開啟時，自動去抓名單
+window.onload = function() {
+    fetch(SCRIPT_API_URL)
+        .then(res => res.json())
+        .then(data => {
+            remoteTeamData = data;
+            console.log("資料加載完成", data);
+        })
+        .catch(err => alert("無法載入名單，請檢查網路或 API 設定"));
+};
+
+function goStep2() {
+    currentStaff = document.getElementById('staffName').value.trim();
+    if (!currentStaff) return alert("請輸入工作人員名稱");
+    if (!remoteTeamData) return alert("名單仍在讀取中，請稍候...");
+    
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+}
+
+function loadTeamData() {
+    const rawNo = document.getElementById('teamNo').value;
+    const teamKey = rawNo.padStart(2, '0');
+    
+    // 從遠端資料中找對應隊伍
+    const members = remoteTeamData[teamKey];
+
+    if (!members) return alert("找不到該隊伍資料，請檢查隊號 (01-27)");
+
+    document.getElementById('displayTeamTitle').innerText = "隊伍 " + teamKey + " 報到核對";
+    const container = document.getElementById('memberListContainer');
+    container.innerHTML = ""; 
+
+    members.forEach((m) => {
+        const mDiv = document.createElement('div');
+        mDiv.className = "member-row";
+        mDiv.innerHTML = `
+            <div class="member-name">${m.mem}. ${m.cn} (${m.en})</div>
+            <div class="member-detail">出生日期: ${m.dob}</div>
+            <br>
+            <div class="checklist-box">
+                <div class="select-all-btn" onclick="selectAll('${m.mem}')">✅ 一鍵全選 (A-F)</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="A"> A. 身份證明文件</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="B"> B. 幼童軍紀錄冊</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="C"> C. 有效紀錄冊(印章)</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="D"> D. 有效會員資格</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="E"> E. 姓名相符</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="F"> F. 穿着整齊制服</div>
+            </div>
+        `;
+        container.appendChild(mDiv);
+    });
+
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.remove('hidden');
+}
+
+function selectAll(memCode) {
+    const checkboxes = document.querySelectorAll(`.cb_${memCode}`);
+    checkboxes.forEach(cb => cb.checked = true);
+}
+
+function finalSubmit() {
+    const rawNo = document.getElementById('teamNo').value;
+    const teamKey = rawNo.padStart(2, '0');
+    const members = remoteTeamData[teamKey]; // 修正：從 remoteTeamData 讀取
+    let allResults = "";
+
+    members.forEach(m => {
+        const checked = Array.from(document.querySelectorAll(`.cb_${m.mem}:checked`))
+                             .map(cb => cb.getAttribute('data-code'))
+                             .join('');
+        allResults += `[${m.mem}:${checked || 'FAIL'}] `;
+    });
+
+    const note = document.getElementById('remarkG').value;
+
+    const formData = new FormData();
+    formData.append(ENTRIES.staff, currentStaff);
+    formData.append(ENTRIES.teamId, teamKey);
+    formData.append(ENTRIES.result, allResults);
+    formData.append(ENTRIES.note, note);
+
+    fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData })
+    .then(() => {
+        document.getElementById('step3').classList.add('hidden');
+        document.getElementById('step4').classList.remove('hidden');
+        window.scrollTo(0, 0); // 回到頂部看到成功訊息
+    })
+    .catch(err => alert("提交失敗，請檢查網路。"));
+}
+
+function resetToTeamSelection() {
+    document.getElementById('teamNo').value = "";
+    document.getElementById('remarkG').value = "";
+    document.getElementById('step4').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
