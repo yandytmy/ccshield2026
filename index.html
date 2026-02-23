@@ -17,7 +17,7 @@
   /* Member Info Table */
   .member-row { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
   .member-name { font-weight: bold; color: var(--primary); font-size: 18px; }
-  .member-detail { font-size: 14px; color: #666; }
+  .member-detail { width: 100%; height: 60px; }
 
   /* Checklist Style */
   .checklist-box { background: #fffbe6; padding: 10px; border-radius: 8px; border: 1px solid #ffe58f; }
@@ -138,7 +138,7 @@ function loadTeamData() {
                 <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="D"> D. 有效會員資格（已續證）</div>
                 <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="E"> E. 會員證與身份證明文件的中英文姓名相符</div>
                 <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="F"> F. 穿着整齊制服（顏色膠巾圈、黑色綁帶皮鞋等）</div>
-                <textarea id="note_${m.mem}" placeholder="${m.mem} G. 違規狀況 (如：戴小狼頭、白襪、不是綁帶黑皮鞋)"></textarea>
+                <textarea id="note_${m.mem}" placeholder="G. 違規狀況 (如：戴小狼頭、白襪、不是綁帶黑皮鞋)"></textarea>
             </div>
         `;
         container.appendChild(mDiv);
