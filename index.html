@@ -3,44 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CC Shield Registeration</title>
+<title>CC Shield Registration System 2026</title>
 <style>
-  /* --- 基礎變數設定 --- */
+  /* --- 顏色與基礎設定 --- */
   :root { --primary: #1E88E5; --success: #43A047; --bg: #f4f4f4; --dark: #333; }
-  
-  /* --- 網頁整體樣式 --- */
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; }
   header { background: var(--dark); color: white; padding: 15px; text-align: center; font-weight: bold; }
   .container { padding: 15px; max-width: 600px; margin: auto; }
   
-  /* --- 卡片元件 --- */
+  /* --- 卡片與佈局 --- */
   .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+  .hidden { display: none; }
   
-  /* --- 輸入框與文字區域 --- */
+  /* --- 表單元件 --- */
   input, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+  textarea { height: 80px; resize: none; font-size: 14px; background: #fff; }
   
-  /* --- 隊員資料列佈局 --- */
-  .member-row { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 15px; }
+  /* --- 賽員列樣式 --- */
+  .member-row { background: #f9f9f9; border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 15px; }
   .member-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .member-info-text { font-weight: bold; color: var(--primary); font-size: 16px; flex: 1; }
-  
-  /* --- 隊員頭像樣式 --- */
+  .member-info-text { font-weight: bold; color: var(--primary); font-size: 16px; flex: 1; line-height: 1.4; }
   .member-icon { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid #ddd; background: #eee; }
 
-  /* --- 檢查清單方框 --- */
+  /* --- 檢查清單項目 --- */
   .checklist-box { background: #fffbe6; padding: 10px; border-radius: 8px; border: 1px solid #ffe58f; }
-  .check-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; cursor: pointer; }
+  .check-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; cursor: pointer; font-size: 14px; }
   .check-item:last-child { border-bottom: none; }
-  input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; }
+  input[type="checkbox"] { width: 22px; height: 22px; margin-right: 12px; flex-shrink: 0; }
   
   /* --- 按鈕樣式 --- */
-  .select-all-btn { background: #eee; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; cursor: pointer; text-align: center; }
-  button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+  .select-all-btn { background: #eee; border: 1px solid #ccc; padding: 8px; border-radius: 4px; font-size: 13px; margin-bottom: 10px; cursor: pointer; text-align: center; font-weight: bold; }
+  button { width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.3s; }
   .btn-primary { background: var(--primary); color: white; }
   .btn-success { background: var(--success); color: white; }
-  
-  /* --- 隱藏元件用的類別 --- */
-  .hidden { display: none; }
+  button:disabled { background: #ccc; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -62,9 +58,10 @@
   </div>
 
   <div id="step3" class="card hidden">
-    <h2 id="displayTeamTitle">隊伍 01 報到清單</h2>
-    <div id="memberListContainer"></div> <hr>
-    <button class="btn-success" onclick="finalSubmit()">確認並提交全隊資料</button>
+    <h2 id="displayTeamTitle">隊伍 01 報到核對</h2>
+    <div id="memberListContainer"></div>
+    <hr>
+    <button class="btn-success" id="finalSubmitBtn" onclick="finalSubmit()">確認並提交全隊資料</button>
   </div>
 
   <div id="step4" class="card hidden" style="text-align: center;">
@@ -75,11 +72,10 @@
 </div>
 
 <script>
-// --- [設定區] API 網址與 Google Form 欄位編號 ---
+// ========== [設定區] ==========
 const SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbxMApvuoj4g7zNEdPQOk_-ro6OLOxrvhk_VNyCOMnUr24i9qui7LOSaFSBtfCJevR8o/exec";
 const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeR5ESTo7IWleRlI5KDEBnhI3xJpwR0hTkOWKMKe9tFcM9kSQ/formResponse";
 
-// 對應 Google Form 的 Entry ID
 const ENTRIES = {
     staff: "entry.1007120810",
     teamId: "entry.1465479015",
@@ -93,51 +89,45 @@ const ENTRIES = {
     note: "entry.1273670747"
 };
 
-let remoteTeamData = null; // 儲存從 Apps Script 抓回來的 JSON 總名單
-let currentStaff = "";     // 儲存目前操作的工作人員姓名
+let remoteTeamData = null; 
+let currentStaff = "";
 
-// [初始化] 網頁載入時自動執行：從 Apps Script 抓取最新的名單
+// [初始化] 抓取名單
 window.onload = function() {
     fetch(SCRIPT_API_URL)
         .then(res => res.json())
-        .then(data => {
-            remoteTeamData = data;
-            console.log("資料加載完成", data);
-        })
-        .catch(err => alert("無法載入名單，請檢查網路或 API 設定"));
+        .then(data => { remoteTeamData = data; console.log("名單載入成功"); })
+        .catch(err => alert("無法載入名單，請檢查網路"));
 };
 
-// [功能] 進入第二步：驗證姓名並切換畫面
+// [步驟切換] 登入 -> 隊號
 function goStep2() {
     currentStaff = document.getElementById('staffName').value.trim();
     if (!currentStaff) return alert("請輸入工作人員名稱");
-    if (!remoteTeamData) return alert("名單仍在讀取中，請稍候...");
+    if (!remoteTeamData) return alert("資料載入中...");
     document.getElementById('step1').classList.add('hidden');
     document.getElementById('step2').classList.remove('hidden');
 }
 
-// [功能] 載入隊伍資料：根據隊號生成 HTML 隊員清單
+// [功能] 載入名單並還原暫存
 function loadTeamData() {
     const rawNo = document.getElementById('teamNo').value;
-    const teamKey = rawNo.padStart(2, '0'); // 強制轉為兩位數，例如 1 變 01
+    const teamKey = rawNo.padStart(2, '0');
     const members = remoteTeamData[teamKey];
 
-    if (!members) return alert("找不到該隊伍資料");
+    if (!members) return alert("找不到隊伍");
 
     document.getElementById('displayTeamTitle').innerText = "隊伍 " + teamKey + " 報到核對";
     const container = document.getElementById('memberListContainer');
-    container.innerHTML = ""; // 先清空舊內容
+    container.innerHTML = ""; 
 
-    // 迴圈處理該隊每一位成員
     members.forEach((m) => {
         let iconUrl = m.icon || "";
-        // 自動轉換 Google Drive 連結，讓它能直接在 img 標籤顯示
         if (iconUrl.includes("drive.google.com")) {
             const fileId = iconUrl.split('/d/')[1]?.split('/')[0];
             iconUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
         }
 
-        // 動態生成每個隊員的 HTML 區塊
         const mDiv = document.createElement('div');
         mDiv.className = "member-row";
         mDiv.innerHTML = `
@@ -146,92 +136,106 @@ function loadTeamData() {
                 <img src="${iconUrl}" class="member-icon" onerror="this.src='https://via.placeholder.com/80?text=No+Img'">
             </div>
             <div class="checklist-box">
-                <div class="select-all-btn" onclick="selectAll('${m.mem}')">✅ 一鍵全選 (A-F)</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="A"> A. 身份證明文件</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="B"> B. 幼童軍紀錄冊</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="C"> C. 有效紀錄冊(印章)</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="D"> D. 有效會員資格（已續證）</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="E"> E. 中英文姓名、相片相符</div>
-                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="F"> F. 穿着整齊制服（顏色膠巾圈、黑色綁帶皮鞋等）</div>
-                <textarea id="note_${m.mem}" placeholder="G. 違規狀況備註(如：戴小狼頭、白襪、不是綁帶黑皮鞋)"></textarea>
+                <div class="select-all-btn" onclick="selectAll('${m.mem}', '${teamKey}')">✅ 一鍵全選 (A-F)</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="A" onchange="saveProgress('${teamKey}')"> A. 身份證明文件</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="B" onchange="saveProgress('${teamKey}')"> B. 幼童軍紀錄冊</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="C" onchange="saveProgress('${teamKey}')"> C. 有效紀錄冊(印章)</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="D" onchange="saveProgress('${teamKey}')"> D. 有效會員資格(已續證)</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="E" onchange="saveProgress('${teamKey}')"> E. 中英文姓名、相片相符</div>
+                <div class="check-item"><input type="checkbox" class="cb_${m.mem}" data-code="F" onchange="saveProgress('${teamKey}')"> F. 穿着整齊制服(顏色膠巾圈、黑色綁帶皮鞋等)</div>
+                <textarea id="note_${m.mem}" oninput="saveProgress('${teamKey}')" placeholder="G. 違規狀況備註(如：戴小狼頭、白襪、不是綁帶黑皮鞋)"></textarea>
             </div>
         `;
         container.appendChild(mDiv);
     });
 
+    restoreProgress(teamKey); // 載入後自動還原暫存
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
 }
 
-// [功能] 一鍵全選：勾選該賽員的所有 A-F 核取框
-function selectAll(memCode) {
-    const checkboxes = document.querySelectorAll(`.cb_${memCode}`);
-    checkboxes.forEach(cb => cb.checked = true);
+// [暫存功能] 儲存到 localStorage
+function saveProgress(teamKey) {
+    const members = remoteTeamData[teamKey];
+    const draft = {};
+    members.forEach(m => {
+        draft[m.mem] = {
+            checks: ['A','B','C','D','E','F'].map(c => document.querySelector(`.cb_${m.mem}[data-code="${c}"]`).checked),
+            note: document.getElementById(`note_${m.mem}`).value
+        };
+    });
+    localStorage.setItem(`draft_${teamKey}`, JSON.stringify(draft));
 }
 
-// [功能] 最終提交：一次將全隊隊員資料發送到 Google Form
+// [暫存功能] 從 localStorage 還原
+function restoreProgress(teamKey) {
+    const data = localStorage.getItem(`draft_${teamKey}`);
+    if (!data) return;
+    const draft = JSON.parse(data);
+    Object.keys(draft).forEach(memId => {
+        const mDraft = draft[memId];
+        ['A','B','C','D','E','F'].forEach((c, idx) => {
+            const cb = document.querySelector(`.cb_${memId}[data-code="${c}"]`);
+            if (cb) cb.checked = mDraft.checks[idx];
+        });
+        const nt = document.getElementById(`note_${memId}`);
+        if (nt) nt.value = mDraft.note;
+    });
+}
+
+// [功能] 一鍵全選
+function selectAll(memCode, teamKey) {
+    document.querySelectorAll(`.cb_${memCode}`).forEach(cb => cb.checked = true);
+    saveProgress(teamKey);
+}
+
+// [功能] 提交全隊資料
 async function finalSubmit() {
     const rawNo = document.getElementById('teamNo').value;
     const teamKey = rawNo.padStart(2, '0');
     const members = remoteTeamData[teamKey];
-    const submitBtn = document.querySelector('.btn-success');
-    
-    // 防呆確認
-    if (!confirm("確定提交全隊共 " + members.length + " 位隊員的資料嗎？")) return;
+    const btn = document.getElementById('finalSubmitBtn');
 
-    // 禁用按鈕防止重複點擊
-    submitBtn.disabled = true;
-    submitBtn.innerText = "正在提交全隊資料...";
+    if (!confirm(`確定提交隊伍 ${teamKey} 共 ${members.length} 位賽員資料？`)) return;
 
-    // 使用 Promise.all 同步發送多筆資料
+    btn.disabled = true;
+    btn.innerText = "正在提交...";
+
     const promises = members.map(m => {
-        const formData = new FormData();
-        formData.append(ENTRIES.staff, currentStaff);
-        formData.append(ENTRIES.teamId, teamKey);
-        formData.append(ENTRIES.memId, m.mem); 
-        
-        // 抓取每一項 A-F 的狀態並轉換為文字
-        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(code => {
-            const isChecked = document.querySelector(`.cb_${m.mem}[data-code="${code}"]`).checked;
-            formData.append(ENTRIES['result' + code], isChecked ? "OK" : "FAILED");
+        const params = new URLSearchParams(); // 使用最穩定的 URLSearchParams
+        params.append(ENTRIES.staff, currentStaff);
+        params.append(ENTRIES.teamId, teamKey);
+        params.append(ENTRIES.memId, m.mem);
+        ['A','B','C','D','E','F'].forEach(c => {
+            const val = document.querySelector(`.cb_${m.mem}[data-code="${c}"]`).checked ? "OK" : "FAILED";
+            params.append(ENTRIES['result'+c], val);
         });
+        params.append(ENTRIES.note, document.getElementById(`note_${m.mem}`).value);
 
-        // 抓取個人備註文字
-        const individualNote = document.getElementById(`note_${m.mem}`).value;
-        formData.append(ENTRIES.note, individualNote);
-
-        // 發送 POST 請求到 Google Form
-        return fetch(FORM_URL, { method: "POST", mode: "no-cors", body: formData });
+        return fetch(FORM_URL, { method: "POST", mode: "no-cors", body: params });
     });
 
     try {
-        await Promise.all(promises); // 等待所有隊員資料發送完畢
+        await Promise.all(promises);
+        localStorage.removeItem(`draft_${teamKey}`); // 成功後刪除暫存
         document.getElementById('step3').classList.add('hidden');
         document.getElementById('step4').classList.remove('hidden');
         window.scrollTo(0, 0);
     } catch (err) {
-        alert("網路錯誤，請重試");
-        submitBtn.disabled = false;
-        submitBtn.innerText = "確認並提交全隊資料";
+        alert("提交失敗，請檢查網路");
+        btn.disabled = false;
+        btn.innerText = "確認並提交全隊資料";
     }
 }
 
-// [功能] 重置：回到隊伍選擇畫面，並清空暫存資料
+// [功能] 重置回到選隊畫面
 function resetToTeamSelection() {
     document.getElementById('teamNo').value = "";
-    const container = document.getElementById('memberListContainer');
-    if (container) container.innerHTML = ""; // 徹底移除上個隊伍的 HTML
-    
+    document.getElementById('memberListContainer').innerHTML = "";
     document.getElementById('step4').classList.add('hidden');
     document.getElementById('step2').classList.remove('hidden');
-    
-    // 恢復提交按鈕可用
-    const submitBtn = document.querySelector('.btn-success');
-    if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerText = "確認並提交全隊資料";
-    }
-    window.scrollTo(0, 0);
+    document.getElementById('finalSubmitBtn').disabled = false;
+    document.getElementById('finalSubmitBtn').innerText = "確認並提交全隊資料";
 }
 </script>
 </body>
