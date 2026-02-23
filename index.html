@@ -128,6 +128,7 @@ function loadTeamData() {
         mDiv.className = "member-row";
         mDiv.innerHTML = `
             <div class="member-name">${m.mem}. ${m.cn} (${m.en}) 出生日期: ${m.dob}</div>
+            <div class="member-detail"><img src="${m.icon}"></div>
             <br>
             <div class="checklist-box">
                 <div class="select-all-btn" onclick="selectAll('${m.mem}')">✅ 一鍵全選 (A-F)</div>
