@@ -2,55 +2,61 @@
 <html lang="zh-HK">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>比賽簽到系統</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>比賽簽到系統 (註釋強化版)</title>
 
 <style>
-body{
-  font-family:Arial, sans-serif;
-  background:#000;
-  color:#fff;
-  margin:0;
-  text-align:center;
-}
-header{
-  background:#111;
-  padding:18px;
-  font-size:26px;
-  font-weight:bold;
-}
-input,button{
-  width:92%;
-  max-width:420px;
-  padding:18px;
-  margin:12px auto;
-  font-size:24px;
-  border-radius:12px;
-  border:none;
-}
-.first-btn{background:#43A047;color:#fff}
-.event-btn{background:#1E88E5;color:#fff}
-.manual-btn{background:#F9A825;color:#000}
-.back-btn{background:#555;color:#fff}
-
-.confirm{
-  font-size:36px;
-  color:#4CAF50;
-  margin-top:60px;
-}
-.fail{
-  font-size:36px;
-  color:#E53935;
-  margin-top:60px;
-}
-.member-id{
-  font-size:28px;
-  margin-top:20px;
-  color:#FFD54F;
+/* 定義全域顏色變數，方便日後統一修改主題色 */
+:root {
+  --bg-color: #0e0e0e;
+  --primary: #1E88E5;   /* 藍色：一般操作 */
+  --success: #43A047;   /* 綠色：成功/首次 */
+  --warning: #F9A825;   /* 黃色：手動輸入 */
+  --danger: #E53935;    /* 紅色：錯誤 */
 }
 
-.hidden{display:none}
-#scanner{width:100%;max-width:420px;margin:auto}
+body {
+  font-family: -apple-system, sans-serif;
+  background: var(--bg-color);
+  color: #fff;
+  margin: 0;
+  text-align: center;
+}
+
+header {
+  background: #000;
+  padding: 20px;
+  font-size: 22px;
+  font-weight: bold;
+  border-bottom: 2px solid #333;
+}
+
+/* 頁面切換邏輯：隱藏所有 class 為 page 的 div，除非它沒有 hidden class */
+.page { padding: 20px; }
+.hidden { display: none; }
+
+/* 按鈕樣式：加入點擊縮放動畫，增加手感 */
+button {
+  width: 95%; max-width: 400px;
+  padding: 18px; margin: 10px auto;
+  font-size: 20px; border-radius: 12px; border: none;
+  cursor: pointer; font-weight: bold;
+  transition: transform 0.1s;
+}
+button:active { transform: scale(0.95); opacity: 0.9; }
+
+.first-btn { background: var(--success); color: #fff; }
+.event-btn { background: var(--primary); color: #fff; }
+.manual-btn { background: var(--warning); color: #000; }
+.back-btn { background: #444; color: #fff; }
+
+/* 狀態顯示區 */
+.confirm { font-size: 36px; color: var(--success); margin-top: 40px; }
+.fail { font-size: 36px; color: var(--danger); margin-top: 40px; }
+.member-id { font-size: 32px; margin: 20px 0; color: #FFD54F; font-family: monospace; }
+
+/* 掃描器容器 */
+#scanner { width: 100%; max-width: 400px; margin: auto; border-radius: 12px; overflow: hidden; }
 </style>
 </head>
 
@@ -58,175 +64,194 @@ input,button{
 
 <header id="header">🔐 工作人員登入</header>
 
-<!-- 工作人員 -->
 <div id="staffPage" class="page">
-  <input id="staffInput" placeholder="輸入工作人員名稱">
-  <button class="event-btn" onclick="saveStaff()">開始</button>
+  <input id="staffInput" type="text" placeholder="輸入工作人員名稱" 
+         style="width:90%; padding:15px; border-radius:8px; font-size:18px;">
+  <button class="event-btn" onclick="saveStaff()">進入系統</button>
 </div>
 
-<!-- 項目 -->
 <div id="eventPage" class="page hidden">
   <button class="first-btn" onclick="selectEvent('首次報到')">① 首次報到</button>
   <button class="event-btn" onclick="selectEvent('項目一')">② 項目一</button>
   <button class="event-btn" onclick="selectEvent('項目二')">③ 項目二</button>
   <button class="event-btn" onclick="selectEvent('項目三')">④ 項目三</button>
-  <button class="event-btn" onclick="selectEvent('項目四')">⑤ 項目四</button>
-  <button class="event-btn" onclick="selectEvent('項目五')">⑥ 項目五</button>
-  <button class="event-btn" onclick="selectEvent('項目六')">⑦ 項目六</button>
-</div>
+  </div>
 
-<!-- 掃描 -->
 <div id="scanPage" class="page hidden">
   <div id="scanner"></div>
   <button class="manual-btn" onclick="openManual()">✍️ 手動輸入</button>
-  <button class="back-btn" onclick="backToEvent()">⬅ 返回</button>
+  <button class="back-btn" onclick="backToEvent()">⬅ 返回項目</button>
 </div>
 
-<!-- 手動 -->
 <div id="manualPage" class="page hidden">
-  <input id="teamNo" placeholder="隊號（01–27）" maxlength="2">
-  <input id="memberNo" placeholder="隊員（A–I）" maxlength="1">
-  <button class="event-btn" onclick="submitManual()">提交</button>
-  <button class="back-btn" onclick="backToScan()">⬅ 返回相機</button>
+  <input id="teamNo" type="number" inputmode="numeric" placeholder="隊號(01-27)">
+  <input id="memberNo" type="text" placeholder="隊員(A-I)" maxlength="1">
+  <button class="event-btn" onclick="submitManual()">提交數據</button>
+  <button class="back-btn" onclick="backToScan()">⬅ 返回掃描</button>
 </div>
 
-<!-- ✅ 成功 -->
 <div id="successPage" class="page hidden">
   <div class="confirm">✅ 簽到成功</div>
   <div id="successMember" class="member-id"></div>
 </div>
 
-<!-- ❌ 失敗 -->
 <div id="failPage" class="page hidden">
-  <div class="fail">❌ 簽到失敗</div>
-  <div class="member-id">QR 內容無效</div>
+  <div class="fail">❌ 無效編號</div>
 </div>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
+
 <script>
-// ========== Google Form ==========
-const FORM_URL="https://docs.google.com/forms/d/e/1FAIpQLSfb9TdBGH6aGtpX1chUArd-61hNR2QSOjyZ55_MJkReu4BZCQ/formResponse";
-const ENTRY_MEMBER="entry.440560781";
-const ENTRY_EVENT="entry.722246826";
-const ENTRY_STAFF="entry.1290533017";
-const ENTRY_DEVICE="entry.389796138";
-// =================================
+/**
+ * 配置區：請對應你的 Google 表單欄位 ID
+ * 在表單「取得預先填寫的連結」中可以找到這些 entry.xxxx
+ */
+const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfb9TdBGH6aGtpX1chUArd-61hNR2QSOjyZ55_MJkReu4BZCQ/formResponse";
+const ENTRIES = {
+  member: "entry.440560781",
+  event: "entry.722246826",
+  staff: "entry.1290533017",
+  device: "entry.389796138"
+};
 
-let staff="", eventName="";
-let qr=null, scanning=false;
-let device="DEV-"+Math.random().toString(36).substr(2,6).toUpperCase();
+// 正則表達式：限制隊號 01-27，隊員 A-I (例如: 05A, 27I)
+const MEMBER_REGEX = /^(0[1-9]|1[0-9]|2[0-7])[A-I]$/;
 
-// ✅ 合法 ID regex
-const MEMBER_REGEX=/^(0[1-9]|1[0-9]|2[0-7])[A-I]$/;
+let staff = "", eventName = "";
+let html5QrCode = null;
+let isProcessing = false; // 防止重複觸發掃描
+let deviceId = "DEV-" + Math.random().toString(36).substr(2, 4).toUpperCase();
 
-function show(id){
- document.querySelectorAll(".page")
-   .forEach(p=>p.classList.add("hidden"));
- document.getElementById(id)
-   .classList.remove("hidden");
+/** 頁面導航函數 **/
+function show(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
 
-function vibrate(ms=100){
- if(navigator.vibrate) navigator.vibrate(ms);
+/** 震動反饋 **/
+function vibrate(ms = 100) {
+  if (navigator.vibrate) navigator.vibrate(ms);
 }
 
-function saveStaff(){
- staff=staffInput.value.trim();
- if(!staff) return alert("請輸入名稱");
- header.innerText="📋 選擇項目";
- show("eventPage");
+/** 儲存工作人員並進入下一頁 **/
+function saveStaff() {
+  staff = document.getElementById("staffInput").value.trim();
+  if (!staff) return alert("請輸入工作人員名稱");
+  header.innerText = "📋 選擇項目";
+  show("eventPage");
 }
 
-function selectEvent(e){
- eventName=e;
- header.innerText="📷 掃描 QR";
- show("scanPage");
- setTimeout(startScanner,200);
+/** 選擇比賽項目並啟動相機 **/
+function selectEvent(e) {
+  eventName = e;
+  header.innerText = "📷 掃描: " + e;
+  show("scanPage");
+  startScanner();
 }
 
-function startScanner(){
- scanning=false;
- qr=new Html5Qrcode("scanner");
- qr.start(
-   {facingMode:"environment"},
-   {fps:10,qrbox:250},
-   onScanSuccess
- );
+/** 初始化並啟動 QR 掃描器 **/
+async function startScanner() {
+  isProcessing = false;
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("scanner");
+  }
+  
+  const config = { 
+    fps: 10,           // 每秒掃描次數
+    qrbox: 250         // 掃描框大小
+  };
+  
+  try {
+    await html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+  } catch (err) {
+    console.error("相機啟動失敗", err);
+  }
 }
 
-// ✅ 掃描成功（含 checking）
-function onScanSuccess(raw){
- if(scanning) return;
- scanning=true;
-
- const id=raw.trim().toUpperCase();
-
- qr.stop().then(()=>{
-   // ❌ 格式錯誤
-   if(!MEMBER_REGEX.test(id)){
-     vibrate(200);
-     show("failPage");
-     setTimeout(()=>{
-       show("scanPage");
-       startScanner();
-     },800);
-     return;
-   }
-
-   // ✅ 正確
-   submit(id);
-   document.getElementById("successMember").innerText="成員 ID：" + id;
-   vibrate(100);
-   show("successPage");
-
-   setTimeout(()=>{
-     show("scanPage");
-     startScanner();
-   },800);
- });
+/** 停止相機 **/
+async function stopScanner() {
+  if (html5QrCode && html5QrCode.isScanning) {
+    await html5QrCode.stop();
+  }
 }
 
-function submit(memberId){
- const d=new FormData();
- d.append(ENTRY_MEMBER,memberId);
- d.append(ENTRY_EVENT,eventName);
- d.append(ENTRY_STAFF,staff);
- d.append(ENTRY_DEVICE,device);
- fetch(FORM_URL,{method:"POST",mode:"no-cors",body:d});
+/** 掃描成功回調 **/
+function onScanSuccess(decodedText) {
+  if (isProcessing) return; // 避免在處理中重複掃描
+  isProcessing = true;
+  
+  const id = decodedText.trim().toUpperCase();
+  vibrate(100);
+
+  // 驗證 QR 內容是否符合規則
+  if (!MEMBER_REGEX.test(id)) {
+    stopScanner();
+    show("failPage");
+    vibrate(300);
+    setTimeout(() => { show("scanPage"); startScanner(); }, 1500);
+    return;
+  }
+
+  // 驗證通過，提交數據
+  processResult(id);
 }
 
-// ✅ 手動輸入（同樣 checking）
-function submitManual(){
- let team=teamNo.value.padStart(2,"0");
- let mem=memberNo.value.toUpperCase();
- let id=team+mem;
-
- if(!MEMBER_REGEX.test(id)) return alert("成員 ID 無效");
-
- submit(id);
- document.getElementById("successMember").innerText="成員 ID：" + id;
- vibrate(100);
- show("successPage");
- setTimeout(()=>show("manualPage"),800);
+/** 處理最終結果（提交與顯示） **/
+function processResult(id) {
+  stopScanner();
+  submitToGoogle(id);
+  
+  document.getElementById("successMember").innerText = id;
+  show("successPage");
+  
+  // 1.5 秒後自動返回掃描頁面，準備下一位
+  setTimeout(() => {
+    show("scanPage");
+    startScanner();
+  }, 1500);
 }
 
-function openManual(){
- if(qr) qr.stop();
- header.innerText="✍️ 手動輸入";
- show("manualPage");
+/** 異步提交數據到 Google Form **/
+function submitToGoogle(memberId) {
+  // 建立備份數據存於手機，以防斷網
+  const log = { id: memberId, event: eventName, time: new Date().toLocaleTimeString() };
+  let history = JSON.parse(localStorage.getItem('logs') || "[]");
+  history.push(log);
+  localStorage.setItem('logs', JSON.stringify(history));
+
+  // 封裝表單數據
+  const body = new FormData();
+  body.append(ENTRIES.member, memberId);
+  body.append(ENTRIES.event, eventName);
+  body.append(ENTRIES.staff, staff);
+  body.append(ENTRIES.device, deviceId);
+
+  // mode: 'no-cors' 是關鍵，否則會報跨網域錯誤
+  fetch(FORM_URL, { method: "POST", mode: "no-cors", body: body })
+    .catch(() => console.log("暫時無法連線至 Google，已保存本地備份"));
 }
 
-function backToScan(){
- header.innerText="📷 掃描 QR";
- show("scanPage");
- setTimeout(startScanner,200);
+/** 手動輸入邏輯 **/
+function submitManual() {
+  let team = document.getElementById("teamNo").value.padStart(2, "0");
+  let mem = document.getElementById("memberNo").value.toUpperCase();
+  let id = team + mem;
+
+  if (!MEMBER_REGEX.test(id)) {
+    alert("格式不正確 (隊號01-27 + A-I)");
+    return;
+  }
+
+  processResult(id);
+  // 清空輸入欄位
+  document.getElementById("teamNo").value = "";
+  document.getElementById("memberNo").value = "";
 }
 
-function backToEvent(){
- if(qr) qr.stop();
- header.innerText="📋 選擇項目";
- show("eventPage");
-}
+/** 頁面跳轉輔助 **/
+function openManual() { stopScanner(); show("manualPage"); header.innerText = "✍️ 手動輸入"; }
+function backToScan() { show("scanPage"); startScanner(); header.innerText = "📷 掃描: " + eventName; }
+function backToEvent() { stopScanner(); show("eventPage"); header.innerText = "📋 選擇項目"; }
 </script>
 
 </body>
