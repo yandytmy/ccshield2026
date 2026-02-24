@@ -47,6 +47,7 @@
   <div id="step1" class="card">
     <h3>工作人員登入</h3>
     <input type="text" id="staffName" placeholder="輸入您的姓名">
+    <input type="password" id="staffPw" placeholder="輸入活動密碼">
     <button class="btn-primary" onclick="goStep2()">進入報到程序</button>
   </div>
 
@@ -89,33 +90,79 @@ const ENTRIES = {
     note: "entry.1273670747"
 };
 
+// [步驟切換] 登入 -> 隊號
 let remoteTeamData = null; 
 let currentStaff = "";
+let staffPw = "";
 
 // [初始化] 抓取名單
+/**
 window.onload = function() {
     fetch(SCRIPT_API_URL)
         .then(res => res.json())
         .then(data => { remoteTeamData = data; console.log("名單載入成功"); })
         .catch(err => alert("無法載入名單，請檢查網路"));
 };
+**/
 
-// [步驟切換] 登入 -> 隊號
-function goStep2() {
+// [步驟 1] 帶著密鑰下載全名單
+async function goStep2() {
     currentStaff = document.getElementById('staffName').value.trim();
-    if (!currentStaff) return alert("請輸入工作人員名稱");
-    if (!remoteTeamData) return alert("資料載入中...");
-    document.getElementById('step1').classList.add('hidden');
-    document.getElementById('step2').classList.remove('hidden');
+    staffPw = document.getElementById('staffPw').value.trim();
+    
+    if (!currentStaff || !staffPw) return alert("請輸入姓名及密碼");
+
+    const loginBtn = document.querySelector('#step1 button');
+    loginBtn.disabled = true;
+    loginBtn.innerText = "驗證中並下載名單...";
+
+    try {
+        const response = await fetch(`${SCRIPT_API_URL}?pw=${encodeURIComponent(staffPw)}`);
+        
+        // 檢查是否回傳了正確的 HTTP 狀態
+        if (!response.ok) throw new Error("伺服器回應錯誤");
+
+        const data = await response.json();
+
+        // 關鍵：檢查 Apps Script 回傳的內容是否有 error 欄位
+        if (data && data.error) {
+            alert("驗證失敗: " + data.error);
+            loginBtn.disabled = false;
+            loginBtn.innerText = "進入報到程序";
+            return; // 必須要在這裡終止，才不會跳到下一個畫面
+        }
+
+        // 關鍵：確保收到的資料是物件且不是空的
+        if (!data || Object.keys(data).length === 0) {
+            alert("下載的名單為空，請聯絡系統管理員。");
+            loginBtn.disabled = false;
+            loginBtn.innerText = "進入報到程序";
+            return;
+        }
+
+        // 下載成功後的操作
+        remoteTeamData = data; 
+        console.log("名單載入成功", remoteTeamData);
+        
+        document.getElementById('step1').classList.add('hidden');
+        document.getElementById('step2').classList.remove('hidden');
+        
+    } catch (err) {
+        console.error(err);
+        alert("發生錯誤：\n1. 密碼不正確");
+        loginBtn.disabled = false;
+        loginBtn.innerText = "進入報到程序";
+    }
 }
 
 // [功能] 載入名單並還原暫存
 function loadTeamData() {
-    const rawNo = document.getElementById('teamNo').value;
+const rawNo = document.getElementById('teamNo').value;
+    if (!rawNo) return alert("請輸入隊號");
     const teamKey = rawNo.padStart(2, '0');
-    const members = remoteTeamData[teamKey];
-
-    if (!members) return alert("找不到隊伍");
+    
+    const members = remoteTeamData[teamKey]; 
+    if (!members) return alert("找不到該隊伍資料");
 
     document.getElementById('displayTeamTitle').innerText = "隊伍 " + teamKey + " 報到核對";
     const container = document.getElementById('memberListContainer');
