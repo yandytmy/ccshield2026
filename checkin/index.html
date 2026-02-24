@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>比賽簽到系統 (註釋強化版)</title>
+<title>CC Shield Check-in System 2026</title>
 
 <style>
 /* 定義全域顏色變數，方便日後統一修改主題色 */
@@ -57,12 +57,31 @@ button:active { transform: scale(0.95); opacity: 0.9; }
 
 /* 掃描器容器 */
 #scanner { width: 100%; max-width: 400px; margin: auto; border-radius: 12px; overflow: hidden; }
+
+/* 手動輸入容器：並排顯示 */
+.manual-input-container {
+  display: flex; justify-content: center; gap: 15px; max-width: 420px; margin: 0 auto; }
+
+.input-group { display: flex; flex-direction: column; align-items: flex-start; flex: 1; }
+.input-group label { font-size: 14px; color: #888; margin-bottom: 5px; margin-left: 5px; }
+
+/* 針對手動輸入框的特別加大 */
+#manualPage input {
+  width: 100%; height: 90px; font-size: 40px; text-align: center;
+  background: #222; border: 2px solid #444; border-radius: 15px;
+  padding: 0; }
+#manualPage input:focus { border-color: var(--primary); background: #333; }
+
+/* 調整隊號和隊員的比例 (6:4) */
+.input-group:first-child { flex: 0.6; }
+.input-group:last-child { flex: 0.4; }
+
 </style>
 </head>
 
 <body>
 
-<header id="header">🔐 工作人員登入</header>
+<header id="header">🔐 2026年香港總監挑戰盾總決賽 簽到系統</header>
 
 <div id="staffPage" class="page">
   <input id="staffInput" type="text" placeholder="輸入工作人員名稱" 
@@ -71,11 +90,14 @@ button:active { transform: scale(0.95); opacity: 0.9; }
 </div>
 
 <div id="eventPage" class="page hidden">
-  <button class="first-btn" onclick="selectEvent('首次報到')">① 首次報到</button>
-  <button class="event-btn" onclick="selectEvent('項目一')">② 項目一</button>
-  <button class="event-btn" onclick="selectEvent('項目二')">③ 項目二</button>
-  <button class="event-btn" onclick="selectEvent('項目三')">④ 項目三</button>
-  </div>
+  <button class="first-btn" onclick="selectEvent('首次報到')"> 測試用</button>
+  <button class="event-btn" onclick="selectEvent('項目一')">① 項目一</button>
+  <button class="event-btn" onclick="selectEvent('項目二')">② 項目二</button>
+  <button class="event-btn" onclick="selectEvent('項目三')">③ 項目三</button>
+  <button class="event-btn" onclick="selectEvent('項目四')">④ 項目四</button>
+  <button class="event-btn" onclick="selectEvent('項目五')">⑤ 項目五</button>
+  <button class="event-btn" onclick="selectEvent('項目六')">⑥ 項目六</button>
+</div>
 
 <div id="scanPage" class="page hidden">
   <div id="scanner"></div>
@@ -84,10 +106,22 @@ button:active { transform: scale(0.95); opacity: 0.9; }
 </div>
 
 <div id="manualPage" class="page hidden">
-  <input id="teamNo" type="number" inputmode="numeric" placeholder="隊號(01-27)">
-  <input id="memberNo" type="text" placeholder="隊員(A-I)" maxlength="1">
-  <button class="event-btn" onclick="submitManual()">提交數據</button>
-  <button class="back-btn" onclick="backToScan()">⬅ 返回掃描</button>
+  <div style="margin-bottom: 20px; color: #FFD54F; font-size: 18px;">請輸入參賽者編號</div>
+  
+  <div class="manual-input-container">
+    <div class="input-group">
+      <label>隊號</label>
+      <input id="teamNo" type="number" inputmode="numeric" placeholder="01" min="1" max="27">
+    </div>
+    
+    <div class="input-group">
+      <label>隊員</label>
+      <input id="memberNo" type="text" placeholder="A" maxlength="1" style="text-transform: uppercase;">
+    </div>
+  </div>
+
+  <button class="event-btn" onclick="submitManual()" style="margin-top: 30px; height: 80px; font-size: 26px;">確認提交數據</button>
+  <button class="back-btn" onclick="backToScan()">⬅ 返回相機掃描</button>
 </div>
 
 <div id="successPage" class="page hidden">
@@ -114,8 +148,8 @@ const ENTRIES = {
   device: "entry.389796138"
 };
 
-// 正則表達式：限制隊號 01-27，隊員 A-I (例如: 05A, 27I)
-const MEMBER_REGEX = /^(0[1-9]|1[0-9]|2[0-7])[A-I]$/;
+// 正則表達式：限制隊號 01-26，隊員 A-I (例如: 05A, 26I)
+const MEMBER_REGEX = /^(0[1-9]|1[0-9]|2[0-6])[A-I]$/;
 
 let staff = "", eventName = "";
 let html5QrCode = null;
@@ -238,7 +272,7 @@ function submitManual() {
   let id = team + mem;
 
   if (!MEMBER_REGEX.test(id)) {
-    alert("格式不正確 (隊號01-27 + A-I)");
+    alert("格式不正確 (隊號01-26 + A-I)");
     return;
   }
 
@@ -252,6 +286,21 @@ function submitManual() {
 function openManual() { stopScanner(); show("manualPage"); header.innerText = "✍️ 手動輸入"; }
 function backToScan() { show("scanPage"); startScanner(); header.innerText = "📷 掃描: " + eventName; }
 function backToEvent() { stopScanner(); show("eventPage"); header.innerText = "📋 選擇項目"; }
+
+// 自動跳轉：當隊號輸入 2 位數後，自動跳到隊員代碼輸入框
+document.getElementById('teamNo').addEventListener('input', function() {
+  if (this.value.length >= 2) {
+    document.getElementById('memberNo').focus();
+  }
+});
+
+// 優化：當點擊輸入框時，自動選取文字，方便修改
+document.querySelectorAll('#manualPage input').forEach(input => {
+  input.addEventListener('focus', function() {
+    this.select();
+  });
+});
+
 </script>
 
 </body>
