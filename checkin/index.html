@@ -47,7 +47,7 @@ button:active { transform: scale(0.95); opacity: 0.9; }
 
 .first-btn { background: var(--success); color: #fff; }
 .event-btn { background: var(--primary); color: #fff; }
-.manual-btn { background: var(--warning); color: #000; }
+.manual-btn { background: var(--warning); color: #fff; }
 .back-btn { background: #444; color: #fff; }
 
 /* 狀態顯示區 */
@@ -67,7 +67,7 @@ button:active { transform: scale(0.95); opacity: 0.9; }
 
 /* 針對手動輸入框的特別加大 */
 #manualPage input {
-  width: 100%; height: 90px; font-size: 40px; text-align: center;
+  width: 100%; height: 90px; font-size: 36px; text-align: center;
   background: #222; border: 2px solid #444; border-radius: 15px;
   padding: 0; }
 #manualPage input:focus { border-color: var(--primary); background: #333; }
@@ -110,17 +110,17 @@ button:active { transform: scale(0.95); opacity: 0.9; }
   
   <div class="manual-input-container">
     <div class="input-group">
-      <label>隊號</label>
+      <label>隊號 (01-26)</label>
       <input id="teamNo" type="number" inputmode="numeric" placeholder="01" min="1" max="27">
     </div>
     
     <div class="input-group">
-      <label>隊員</label>
+      <label>隊員 (A-I)</label>
       <input id="memberNo" type="text" placeholder="A" maxlength="1" style="text-transform: uppercase;">
     </div>
   </div>
 
-  <button class="event-btn" onclick="submitManual()" style="margin-top: 30px; height: 80px; font-size: 26px;">確認提交數據</button>
+  <button class="event-btn" onclick="submitManual()">確認提交數據</button>
   <button class="back-btn" onclick="backToScan()">⬅ 返回相機掃描</button>
 </div>
 
