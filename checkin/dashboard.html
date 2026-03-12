@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CCShield 2026 實時看板</title>
+<title>CCShield 2026 多功能看板</title>
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -16,154 +16,118 @@
   --danger: #3d0b0b;
   --danger-border: #e53935;
   --text-gold: #FFD54F;
+  --primary: #1E88E5;
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg-color);
-  color: #fff;
-  margin: 0;
-  padding: 10px;
+  background: var(--bg-color); color: #fff; margin: 0; padding: 10px;
 }
 
-header {
-  text-align: center;
-  padding: 20px;
-  background: #000;
-  border-bottom: 2px solid #333;
-  margin-bottom: 20px;
+/* 導覽選單 */
+.nav-tabs {
+  display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;
+  position: sticky; top: 0; background: #000; padding: 10px 0; z-index: 100;
 }
-
-.refresh-info {
-  text-align: center;
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 10px;
+.tab-btn {
+  background: #333; color: #fff; border: none; padding: 10px 15px;
+  border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;
 }
+.tab-btn.active { background: var(--primary); }
 
-/* 每一隊一列的容器 */
+.view-section { display: none; }
+.view-section.active { display: block; }
+
+/* 共通樣式 */
 .team-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--card-bg);
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  overflow-x: auto; /* 手機版可橫向滑動 A-I */
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 8px; background: var(--card-bg);
+  padding: 10px; border-radius: 8px; margin-bottom: 10px; overflow-x: auto;
 }
-
-.team-label {
-  min-width: 50px;
-  font-weight: bold;
-  color: var(--text-gold);
-  font-size: 18px;
-  border-right: 1px solid #444;
-}
-
-/* 隊員方格容器 */
-.members-container {
-  display: flex;
-  gap: 8px;
-}
-
-/* 隊員方格樣式 */
+.team-label { min-width: 50px; font-weight: bold; color: var(--text-gold); font-size: 18px; border-right: 1px solid #444; }
+.members-container { display: flex; gap: 8px; }
 .member-box {
-  min-width: 85px;
-  min-height: 65px;
-  padding: 5px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  font-size: 12px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
+  min-width: 80px; min-height: 50px; padding: 5px; border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; font-size: 12px; border: 2px solid transparent;
 }
+.is-none { background: var(--danger); border-color: var(--danger-border); opacity: 0.6; }
+.is-done { background: var(--success); border-color: var(--success-border); }
+.tag { background: rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 3px; font-size: 9px; }
 
-/* 狀態顏色 */
-.is-none {
-  background: var(--danger);
-  border-color: var(--danger-border);
-  opacity: 0.6;
-}
-
-.is-done {
-  background: var(--success);
-  border-color: var(--success-border);
-  opacity: 1;
-}
-
-.member-id {
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 4px;
-}
-
-/* 項目標籤樣式 */
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  justify-content: center;
-}
-
-.tag {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-size: 9px;
-  color: #eee;
-}
-
-/* Loading 狀態 */
-#loading {
-  text-align: center;
-  font-size: 20px;
-  margin-top: 50px;
-  color: var(--text-gold);
-}
+/* 時間分佈專用樣式 */
+.timeline-item { border-left: 3px solid var(--primary); padding-left: 15px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 5px; }
+.time-stamp { color: var(--text-gold); font-family: monospace; }
 </style>
 </head>
 
 <body>
 
-<header>
-  <div style="font-size: 24px;">📊 CCShield 2026 實時看板</div>
-</header>
+<div class="nav-tabs">
+  <button class="tab-btn active" onclick="switchView('overall')">🏠 總覽看板</button>
+  <button class="tab-btn" onclick="switchView('event')">🎯 項目分佈</button>
+  <button class="tab-btn" onclick="switchView('time')">🕒 時間動態</button>
+</div>
 
-<div class="refresh-info" id="refreshInfo">數據同步中...</div>
+<div id="loading" style="text-align:center; margin-top:50px;">正在同步數據...</div>
 
-<div id="loading">正在連線至 Google Sheets...</div>
-<div id="dashboardGrid"></div>
+<div id="overall-view" class="view-section active">
+  <div id="overallGrid"></div>
+</div>
+
+<div id="event-view" class="view-section">
+  <div style="margin-bottom:15px;">
+    <select id="eventSelector" onchange="renderEventView()" style="width:100%; padding:10px; border-radius:8px; background:#333; color:white;">
+      <option value="繩結">項目一：繩結</option>
+      <option value="金氏遊戲">項目二：金氏遊戲</option>
+      <option value="體育技能">項目三：體育技能</option>
+      <option value="小隊競技">項目四：小隊競技</option>
+      <option value="團隊機智">項目五：團隊機智</option>
+      <option value="神秘項目">項目六：神秘項目</option>
+    </select>
+  </div>
+  <div id="eventGrid"></div>
+</div>
+
+<div id="time-view" class="view-section">
+  <div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px;">
+    <label style="color:var(--text-gold); font-weight:bold;">🕒 時間篩選：</label>
+    <select id="timeRangeSelector" onchange="renderTimeView()" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; background:#333; color:white;">
+      <option value="all">顯示所有紀錄 (最新 50 筆)</option>
+      <option value="1h">最近 1 小時</option>
+      <option value="2h">最近 2 小時</option>
+      <option value="custom">自定義起始時間</option>
+    </select>
+    
+    <div id="customTimeInput" style="display:none; margin-top:10px;">
+      <input type="time" id="startTime" onchange="renderTimeView()" style="padding:10px; border-radius:8px; width:100%; box-sizing:border-box;">
+      <p style="font-size:11px; color:#888; margin-top:5px;">* 僅顯示該時間點之後的簽到紀錄</p>
+    </div>
+  </div>
+  <div id="timeList"></div>
+</div>
 
 <script>
-// --- 配置區 ---
 const SS_ID = "1dwK703awpcqW6A3BofDA8cjNSlER2C2Tz5wIu7wr6XQ"; 
-const SHEET_NAME = "response"; // 你的分頁名稱
+const SHEET_NAME = "response"; 
 
-// 初始化 Google Loader
+let rawDataRows = []; // 儲存最原始的資料供隨時過濾
+
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(init);
 
 function init() {
   fetchData();
-  // 每 30 秒自動刷新數據
   setInterval(fetchData, 30000);
 }
 
+function switchView(viewName) {
+  document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(viewName + '-view').classList.add('active');
+  event.target.classList.add('active');
+}
+
 function fetchData() {
-  document.getElementById('refreshInfo').innerText = "數據更新時間: " + new Date().toLocaleTimeString();
-  
-  // SELECT * 代表抓取所有欄位，我們後續手動指定 Index
-  const query = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/${SS_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=SELECT *`
-  );
-  
-  // 停用快取
-  query.setRefreshInterval(0); 
+  const query = new google.visualization.Query(`https://docs.google.com/spreadsheets/d/${SS_ID}/gviz/tq?sheet=${SHEET_NAME}&tq=SELECT *`);
   query.send(handleResponse);
 }
 
@@ -172,75 +136,130 @@ function handleResponse(response) {
     document.getElementById('loading').innerText = "讀取失敗：" + response.getMessage();
     return;
   }
-
   const data = response.getDataTable();
-  const rows = data.getNumberOfRows();
+  const rowsCount = data.getNumberOfRows();
   document.getElementById('loading').style.display = 'none';
 
-  // 1. 初始化狀態 Map (01A 到 26I)
-  let statusMap = {};
-  for (let i = 1; i <= 26; i++) {
-    let teamNum = i.toString().padStart(2, '0');
-    "ABCDEFGHI".split("").forEach(m => {
-      statusMap[teamNum + m] = [];
+  rawDataRows = [];
+  for (let i = 0; i < rowsCount; i++) {
+    rawDataRows.push({
+      timestamp: data.getValue(i, 0),
+      id: data.getValue(i, 2) ? data.getValue(i, 2).toString().trim().toUpperCase() : "",
+      event: data.getValue(i, 3)
     });
   }
 
-  // 2. 填入數據 (根據你的 Sheet：Index 2 是成員 ID, Index 3 是項目)
-  for (let i = 0; i < rows; i++) {
-    let rawId = data.getValue(i, 2); 
-    let rawEvent = data.getValue(i, 3);
-    
-    if (rawId) {
-      let cleanId = rawId.toString().trim().toUpperCase();
-      if (statusMap[cleanId]) {
-        // 避免重複標籤
-        if (!statusMap[cleanId].includes(rawEvent)) {
-          statusMap[cleanId].push(rawEvent);
-        }
-      }
-    }
-  }
-
-  renderGrid(statusMap);
+  renderOverallView();
+  renderEventView();
+  renderTimeView();
 }
 
-function renderGrid(map) {
-  const container = document.getElementById('dashboardGrid');
-  container.innerHTML = "";
+// --- 渲染視圖 1: 總覽 ---
+function renderOverallView() {
+  const container = document.getElementById('overallGrid');
+  let statusMap = buildStatusMap();
+  
+  rawDataRows.forEach(row => {
+    if (statusMap[row.id] && !statusMap[row.id].includes(row.event)) {
+      statusMap[row.id].push(row.event);
+    }
+  });
 
+  container.innerHTML = generateGridHtml(statusMap, true);
+}
+
+// --- 渲染視圖 2: 項目分佈 ---
+function renderEventView() {
+  const selectedEvent = document.getElementById('eventSelector').value;
+  const container = document.getElementById('eventGrid');
+  let statusMap = buildStatusMap();
+  
+  rawDataRows.forEach(row => {
+    if (row.event === selectedEvent && statusMap[row.id]) {
+      statusMap[row.id].push(row.event);
+    }
+  });
+
+  container.innerHTML = `<h3 style='color:var(--primary);'>已參與「${selectedEvent}」之隊員</h3>` + generateGridHtml(statusMap, false);
+}
+
+// --- 渲染視圖 3: 時間分佈 ---
+function renderTimeView() {
+  const container = document.getElementById('timeList');
+  const range = document.getElementById('timeRangeSelector').value;
+  const customInput = document.getElementById('customTimeInput');
+  
+  // 顯示/隱藏自定義時間輸入框
+  customInput.style.display = (range === 'custom') ? 'block' : 'none';
+
+  const now = new Date();
+  let filteredData = [...rawDataRows];
+
+  if (range === '1h') {
+    filteredData = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 3600000);
+  } else if (range === '2h') {
+    filteredData = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 7200000);
+  } else if (range === 'custom') {
+    const startTimeVal = document.getElementById('startTime').value;
+    if (startTimeVal) {
+      const [h, m] = startTimeVal.split(':');
+      const startDate = new Date();
+      startDate.setHours(h, m, 0, 0);
+      filteredData = rawDataRows.filter(row => new Date(row.timestamp) >= startDate);
+    }
+  } else {
+    // 預設模式：取最新 50 筆
+    filteredData = filteredData.reverse().slice(0, 50);
+  }
+
+  // 如果是按時間篩選的模式，也要反轉顯示最新
+  if (range !== 'all') filteredData.reverse();
+
+  let html = `<h3>找到 ${filteredData.length} 筆符合條件的動態</h3>`;
+  if (filteredData.length === 0) html += "<p style='color:#888;'>此時段內暫無數據</p>";
+
+  filteredData.forEach(row => {
+    const timeStr = row.timestamp ? new Date(row.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "未知";
+    html += `
+      <div class="timeline-item">
+        <span class="time-stamp">[${timeStr}]</span> 
+        <b style="color:var(--text-gold); font-size:1.1em; margin-left:10px;">${row.id}</b> 
+        已完成 <span style="color:var(--success-border)">${row.event}</span>
+      </div>
+    `;
+  });
+  container.innerHTML = html;
+}
+
+// --- 輔助工具 ---
+function buildStatusMap() {
+  let map = {};
+  for (let i = 1; i <= 26; i++) {
+    let t = i.toString().padStart(2, '0');
+    "ABCDEFGHI".split("").forEach(m => map[t + m] = []);
+  }
+  return map;
+}
+
+function generateGridHtml(map, showTags) {
+  let html = "";
   for (let t = 1; t <= 26; t++) {
     let teamId = t.toString().padStart(2, '0');
-    
-    // 建立隊伍列 (Row)
-    const row = document.createElement('div');
-    row.className = 'team-row';
-    
-    let rowHtml = `<div class="team-label">T${teamId}</div>`;
-    rowHtml += `<div class="members-container">`;
-
-    // 建立隊員格 (A-I)
+    html += `<div class="team-row"><div class="team-label">T${teamId}</div><div class="members-container">`;
     "ABCDEFGHI".split("").forEach(letter => {
       let id = teamId + letter;
-      let events = map[id] || [];
-      let isDone = events.length > 0;
-      
-      let tagsHtml = events.map(e => `<span class="tag">${e}</span>`).join('');
-      
-      rowHtml += `
-        <div class="member-box ${isDone ? 'is-done' : 'is-none'}">
-          <div class="member-id">${id}</div>
-          <div class="tag-list">${tagsHtml}</div>
-        </div>
-      `;
+      let hasDone = map[id].length > 0;
+      let tags = showTags ? map[id].map(e => `<span class="tag">${e}</span>`).join('') : "";
+      html += `
+        <div class="member-box ${hasDone ? 'is-done' : 'is-none'}">
+          <div style="font-weight:bold;">${id}</div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;">${tags}</div>
+        </div>`;
     });
-
-    rowHtml += `</div>`;
-    row.innerHTML = rowHtml;
-    container.appendChild(row);
+    html += `</div></div>`;
   }
+  return html;
 }
 </script>
-
 </body>
 </html>
