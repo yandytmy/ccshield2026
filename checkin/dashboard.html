@@ -187,18 +187,47 @@ function renderEventView() {
   const selectedEvent = document.getElementById('eventSelector').value;
   const container = document.getElementById('eventGrid');
   let eventStatusMap = buildStatusMap(); 
-  let countMap = {}; 
+  let teamCountMap = {}; // 用來存每一隊(T01-T26)的總人數
 
+  // 1. 初始化每一隊的 Count 為 0
+  for (let i = 1; i <= 26; i++) teamCountMap[i.toString().padStart(2, '0')] = 0;
+
+  // 2. 填充數據
   rawDataRows.forEach(row => {
-    if (!countMap[row.id]) countMap[row.id] = new Set();
-    countMap[row.id].add(row.event);
     if (row.event === selectedEvent && eventStatusMap[row.id]) {
       eventStatusMap[row.id].push(row.event);
+      // 增加該隊的總計數 (從 ID 前兩位取得隊號)
+      let teamId = row.id.substring(0, 2);
+      if (teamCountMap[teamId] !== undefined) {
+        teamCountMap[teamId]++;
+      }
     }
   });
 
   let html = `<h3 style='color:var(--primary); margin-bottom:15px;'>🎯 項目：${selectedEvent}</h3>`;
-  html += generateGridHtml(eventStatusMap, false, countMap);
+  
+  for (let t = 1; t <= 26; t++) {
+    let teamId = t.toString().padStart(2, '0');
+    let count = teamCountMap[teamId];
+    
+    html += `
+      <div class="team-row">
+        <div class="team-label">
+          T${teamId}
+          <div style="font-size:10px; color:var(--text-gold); margin-top:4px;">Count: ${count}</div>
+        </div>
+        <div class="members-container">`;
+    
+    "ABCDEFGHI".split("").forEach(letter => {
+      let id = teamId + letter;
+      let hasDone = eventStatusMap[id].length > 0;
+      html += `
+        <div class="member-box ${hasDone ? 'is-done' : 'is-none'}">
+          <div style="font-weight:bold;">${id}</div>
+        </div>`;
+    });
+    html += `</div></div>`;
+  }
   container.innerHTML = html;
 }
 
@@ -208,6 +237,7 @@ function renderTimeView() {
   const now = new Date();
   let filteredData = [...rawDataRows];
 
+  // 時間篩選邏輯
   if (range === '1h') {
     filteredData = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 3600000);
   } else if (range === 'custom') {
@@ -219,22 +249,30 @@ function renderTimeView() {
       filteredData = rawDataRows.filter(row => {
         const d = new Date(row.timestamp); return d >= startDate && d <= endDate;
       });
+    } else {
+      container.innerHTML = "<p style='color:#666;'>請輸入起始與結束時間以進行網格分析。</p>";
+      return;
     }
   } else {
-    filteredData = filteredData.reverse().slice(0, 50);
+    // 預設「最新 50 筆」在網格模式下較無意義，改為顯示所有有紀錄的
+    filteredData = [...rawDataRows];
   }
 
-  if (range !== 'all' && range !== 'custom') filteredData.reverse(); 
-  // Custom 模式下根據時間戳排序
-  if (range === 'custom') filteredData.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  let html = `<h3>找到 ${filteredData.length} 筆紀錄</h3>`;
-  if(filteredData.length === 0) html += `<p style="color:#666;">目前時段暫無簽到數據。</p>`;
-  
+  // 建立時間篩選後的狀態 Map
+  let timeStatusMap = buildStatusMap();
   filteredData.forEach(row => {
-    const timeStr = row.timestamp ? new Date(row.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "未知";
-    html += `<div class="timeline-item"><span class="time-stamp">[${timeStr}]</span> <b style="color:var(--text-gold); margin-left:10px;">${row.id}</b> - ${row.event}</div>`;
+    if (timeStatusMap[row.id] && !timeStatusMap[row.id].includes(row.event)) {
+      timeStatusMap[row.id].push(row.event);
+    }
   });
+
+  let html = `<h3>🕒 該時段活動網格 (共 ${filteredData.length} 筆紀錄)</h3>`;
+  if (filteredData.length === 0) {
+    html += `<p style="color:#e53935;">⚠️ 此時段內沒有任何隊員進行簽到。</p>`;
+  } else {
+    // 使用與總覽相同的 generateGridHtml，但傳入 true 以顯示參與了哪些項目
+    html += generateGridHtml(timeStatusMap, true, null);
+  }
   container.innerHTML = html;
 }
 
