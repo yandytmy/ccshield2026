@@ -26,12 +26,13 @@ body {
 
 /* 導覽選單 */
 .nav-tabs {
-  display: flex; justify-content: center; gap: 10px; margin-bottom: 20px;
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 20px;
   position: sticky; top: 0; background: #000; padding: 10px 0; z-index: 100;
 }
 .tab-btn {
   background: #333; color: #fff; border: none; padding: 10px 15px;
-  border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px;
+  border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 13px;
+  transition: 0.2s;
 }
 .tab-btn.active { background: var(--primary); }
 
@@ -41,33 +42,40 @@ body {
 /* 共通樣式 */
 .team-row {
   display: flex; align-items: center; gap: 8px; background: var(--card-bg);
-  padding: 10px; border-radius: 8px; margin-bottom: 10px; overflow-x: auto;
+  padding: 10px; border-radius: 8px; margin-bottom: 10px; 
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
+/* 隱藏滾動條但保持功能 */
+.team-row::-webkit-scrollbar { display: none; }
+
 .team-label { min-width: 50px; font-weight: bold; color: var(--text-gold); font-size: 18px; border-right: 1px solid #444; }
 .members-container { display: flex; gap: 8px; }
+
 .member-box {
-  min-width: 80px; min-height: 50px; padding: 5px; border-radius: 6px;
+  min-width: 80px; min-height: 55px; padding: 5px; border-radius: 6px;
   display: flex; flex-direction: column; align-items: center; font-size: 12px; border: 2px solid transparent;
+  justify-content: center;
 }
 .is-none { background: var(--danger); border-color: var(--danger-border); opacity: 0.6; }
 .is-done { background: var(--success); border-color: var(--success-border); }
-.tag { background: rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 3px; font-size: 9px; }
+
+.tag { background: rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin: 1px; }
 
 /* 時間分佈專用樣式 */
-.timeline-item { border-left: 3px solid var(--primary); padding-left: 15px; margin-bottom: 15px; background: #222; padding: 10px; border-radius: 5px; }
+.timeline-item { border-left: 3px solid var(--primary); padding: 10px 15px; margin-bottom: 10px; background: #222; border-radius: 5px; }
 .time-stamp { color: var(--text-gold); font-family: monospace; }
 </style>
 </head>
 
 <body>
 
-<div class="nav-tabs">
-  <button class="tab-btn active" onclick="switchView('overall')">🏠 總覽看板</button>
-  <button class="tab-btn" onclick="switchView('event')">🎯 項目分佈</button>
-  <button class="tab-btn" onclick="switchView('time')">🕒 時間動態</button>
+<div class="nav-tabs" id="tabGroup">
+  <button class="tab-btn active" onclick="switchView('overall', this)">🏠 總覽看板</button>
+  <button class="tab-btn" onclick="switchView('event', this)">🎯 項目分佈</button>
+  <button class="tab-btn" onclick="switchView('time', this)">🕒 時間動態</button>
 </div>
 
-<div id="loading" style="text-align:center; margin-top:50px;">正在同步數據...</div>
+<div id="loading" style="text-align:center; margin-top:50px; color:var(--text-gold);">正在同步數據...</div>
 
 <div id="overall-view" class="view-section active">
   <div id="overallGrid"></div>
@@ -96,8 +104,8 @@ body {
       <option value="custom">自定義時段 (From... To...)</option>
     </select>
     
-    <div id="customTimeInput" style="display:none; margin-top:10px; gap:10px; display:none;">
-      <div style="display:flex; gap:5px; align-items:center;">
+    <div id="customTimeInput" style="display:none; margin-top:10px; gap:10px;">
+      <div style="display:flex; gap:5px; align-items:center; width:100%;">
         <input type="time" id="startTime" onchange="renderTimeView()" style="flex:1; padding:8px; border-radius:5px;">
         <span>至</span>
         <input type="time" id="endTime" onchange="renderTimeView()" style="flex:1; padding:8px; border-radius:5px;">
@@ -111,7 +119,7 @@ body {
 const SS_ID = "1dwK703awpcqW6A3BofDA8cjNSlER2C2Tz5wIu7wr6XQ"; 
 const SHEET_NAME = "response"; 
 
-let rawDataRows = []; // 儲存最原始的資料供隨時過濾
+let rawDataRows = []; 
 
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(init);
@@ -121,18 +129,19 @@ function init() {
   setInterval(fetchData, 30000);
 }
 
-// 控制時間輸入框顯示
 function toggleTimeInputs() {
   const range = document.getElementById('timeRangeSelector').value;
   document.getElementById('customTimeInput').style.display = (range === 'custom') ? 'flex' : 'none';
   renderTimeView();
 }
 
-function switchView(viewName) {
+function switchView(viewName, btnElement) {
   document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
   document.getElementById(viewName + '-view').classList.add('active');
-  event.target.classList.add('active');
+  btnElement.classList.add('active');
+  window.scrollTo(0,0);
 }
 
 function fetchData() {
@@ -163,63 +172,36 @@ function handleResponse(response) {
   renderTimeView();
 }
 
-// --- 渲染視圖 1: 總覽 ---
 function renderOverallView() {
   const container = document.getElementById('overallGrid');
-  let statusMap = buildStatusMap();
-  
+  let statusMap = buildStatusMap(); 
   rawDataRows.forEach(row => {
     if (statusMap[row.id] && !statusMap[row.id].includes(row.event)) {
       statusMap[row.id].push(row.event);
     }
   });
-
-  container.innerHTML = generateGridHtml(statusMap, true);
+  container.innerHTML = generateGridHtml(statusMap, true, null);
 }
 
-// --- 渲染視圖 2: 項目分佈 ---
 function renderEventView() {
   const selectedEvent = document.getElementById('eventSelector').value;
   const container = document.getElementById('eventGrid');
-  
-  // 我們需要兩份 Map：一份存特定項目的狀態，一份存總計數
   let eventStatusMap = buildStatusMap(); 
   let countMap = {}; 
 
-  // 1. 先計算所有隊員的「總完成數」
   rawDataRows.forEach(row => {
     if (!countMap[row.id]) countMap[row.id] = new Set();
     countMap[row.id].add(row.event);
-    
-    // 2. 標記是否有參加「當前選擇項目」
     if (row.event === selectedEvent && eventStatusMap[row.id]) {
       eventStatusMap[row.id].push(row.event);
     }
   });
 
-  let html = `<h3 style='color:var(--primary);'>已參與「${selectedEvent}」之隊員</h3>`;
-  
-  for (let t = 1; t <= 26; t++) {
-    let teamId = t.toString().padStart(2, '0');
-    html += `<div class="team-row"><div class="team-label">T${teamId}</div><div class="members-container">`;
-    
-    "ABCDEFGHI".split("").forEach(letter => {
-      let id = teamId + letter;
-      let hasDoneThisEvent = eventStatusMap[id].length > 0;
-      let totalCount = countMap[id] ? countMap[id].size : 0;
-      
-      html += `
-        <div class="member-box ${hasDoneThisEvent ? 'is-done' : 'is-none'}">
-          <div style="font-weight:bold; font-size:14px;">${id}</div>
-          <div style="color:var(--text-gold); font-size:10px; margin-top:2px;">Count: ${totalCount}</div>
-        </div>`;
-    });
-    html += `</div></div>`;
-  }
+  let html = `<h3 style='color:var(--primary); margin-bottom:15px;'>🎯 項目：${selectedEvent}</h3>`;
+  html += generateGridHtml(eventStatusMap, false, countMap);
   container.innerHTML = html;
 }
 
-// --- 渲染視圖 3: 時間分佈 ---
 function renderTimeView() {
   const container = document.getElementById('timeList');
   const range = document.getElementById('timeRangeSelector').value;
@@ -231,43 +213,31 @@ function renderTimeView() {
   } else if (range === 'custom') {
     const startVal = document.getElementById('startTime').value;
     const endVal = document.getElementById('endTime').value;
-    
     if (startVal && endVal) {
-      const startDate = new Date();
-      const [sh, sm] = startVal.split(':');
-      startDate.setHours(sh, sm, 0, 0);
-
-      const endDate = new Date();
-      const [eh, em] = endVal.split(':');
-      endDate.setHours(eh, em, 0, 0);
-
+      const startDate = new Date(); const [sh, sm] = startVal.split(':'); startDate.setHours(sh, sm, 0, 0);
+      const endDate = new Date(); const [eh, em] = endVal.split(':'); endDate.setHours(eh, em, 0, 0);
       filteredData = rawDataRows.filter(row => {
-        const rowDate = new Date(row.timestamp);
-        return rowDate >= startDate && rowDate <= endDate;
+        const d = new Date(row.timestamp); return d >= startDate && d <= endDate;
       });
     }
   } else {
     filteredData = filteredData.reverse().slice(0, 50);
   }
 
-  // 統一排序：最新的在最上面
-  if (range !== 'all') filteredData.reverse();
+  if (range !== 'all' && range !== 'custom') filteredData.reverse(); 
+  // Custom 模式下根據時間戳排序
+  if (range === 'custom') filteredData.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   let html = `<h3>找到 ${filteredData.length} 筆紀錄</h3>`;
+  if(filteredData.length === 0) html += `<p style="color:#666;">目前時段暫無簽到數據。</p>`;
+  
   filteredData.forEach(row => {
     const timeStr = row.timestamp ? new Date(row.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "未知";
-    html += `
-      <div class="timeline-item">
-        <span class="time-stamp">[${timeStr}]</span> 
-        <b style="color:var(--text-gold); margin-left:10px;">${row.id}</b> 
-        - ${row.event}
-      </div>
-    `;
+    html += `<div class="timeline-item"><span class="time-stamp">[${timeStr}]</span> <b style="color:var(--text-gold); margin-left:10px;">${row.id}</b> - ${row.event}</div>`;
   });
   container.innerHTML = html;
 }
 
-// --- 輔助工具 ---
 function buildStatusMap() {
   let map = {};
   for (let i = 1; i <= 26; i++) {
@@ -277,7 +247,7 @@ function buildStatusMap() {
   return map;
 }
 
-function generateGridHtml(map, showTags) {
+function generateGridHtml(map, showTags, countMap) {
   let html = "";
   for (let t = 1; t <= 26; t++) {
     let teamId = t.toString().padStart(2, '0');
@@ -286,9 +256,12 @@ function generateGridHtml(map, showTags) {
       let id = teamId + letter;
       let hasDone = map[id].length > 0;
       let tags = showTags ? map[id].map(e => `<span class="tag">${e}</span>`).join('') : "";
+      let countText = countMap ? `<div style="color:var(--text-gold); font-size:10px; margin-top:2px;">Count: ${countMap[id] ? countMap[id].size : 0}</div>` : "";
+      
       html += `
         <div class="member-box ${hasDone ? 'is-done' : 'is-none'}">
           <div style="font-weight:bold;">${id}</div>
+          ${countText}
           <div style="display:flex;flex-wrap:wrap;justify-content:center;">${tags}</div>
         </div>`;
     });
