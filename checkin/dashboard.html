@@ -75,7 +75,7 @@ body {
 
 <div id="event-view" class="view-section">
   <div style="margin-bottom:15px;">
-    <select id="eventSelector" onchange="renderEventView()" style="width:100%; padding:10px; border-radius:8px; background:#333; color:white;">
+    <select id="eventSelector" onchange="renderEventView()" style="width:100%; padding:12px; border-radius:8px; background:#333; color:white; font-size:16px;">
       <option value="繩結">項目一：繩結</option>
       <option value="金氏遊戲">項目二：金氏遊戲</option>
       <option value="體育技能">項目三：體育技能</option>
@@ -89,17 +89,19 @@ body {
 
 <div id="time-view" class="view-section">
   <div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px;">
-    <label style="color:var(--text-gold); font-weight:bold;">🕒 時間篩選：</label>
-    <select id="timeRangeSelector" onchange="renderTimeView()" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; background:#333; color:white;">
-      <option value="all">顯示所有紀錄 (最新 50 筆)</option>
+    <label style="color:var(--text-gold); font-weight:bold;">🕒 時間範圍篩選：</label>
+    <select id="timeRangeSelector" onchange="toggleTimeInputs()" style="width:100%; padding:10px; margin-top:10px; border-radius:8px; background:#333; color:white;">
+      <option value="all">最新 50 筆紀錄</option>
       <option value="1h">最近 1 小時</option>
-      <option value="2h">最近 2 小時</option>
-      <option value="custom">自定義起始時間</option>
+      <option value="custom">自定義時段 (From... To...)</option>
     </select>
     
-    <div id="customTimeInput" style="display:none; margin-top:10px;">
-      <input type="time" id="startTime" onchange="renderTimeView()" style="padding:10px; border-radius:8px; width:100%; box-sizing:border-box;">
-      <p style="font-size:11px; color:#888; margin-top:5px;">* 僅顯示該時間點之後的簽到紀錄</p>
+    <div id="customTimeInput" style="display:none; margin-top:10px; gap:10px; display:none;">
+      <div style="display:flex; gap:5px; align-items:center;">
+        <input type="time" id="startTime" onchange="renderTimeView()" style="flex:1; padding:8px; border-radius:5px;">
+        <span>至</span>
+        <input type="time" id="endTime" onchange="renderTimeView()" style="flex:1; padding:8px; border-radius:5px;">
+      </div>
     </div>
   </div>
   <div id="timeList"></div>
@@ -117,6 +119,13 @@ google.charts.setOnLoadCallback(init);
 function init() {
   fetchData();
   setInterval(fetchData, 30000);
+}
+
+// 控制時間輸入框顯示
+function toggleTimeInputs() {
+  const range = document.getElementById('timeRangeSelector').value;
+  document.getElementById('customTimeInput').style.display = (range === 'custom') ? 'flex' : 'none';
+  renderTimeView();
 }
 
 function switchView(viewName) {
@@ -172,59 +181,86 @@ function renderOverallView() {
 function renderEventView() {
   const selectedEvent = document.getElementById('eventSelector').value;
   const container = document.getElementById('eventGrid');
-  let statusMap = buildStatusMap();
   
+  // 我們需要兩份 Map：一份存特定項目的狀態，一份存總計數
+  let eventStatusMap = buildStatusMap(); 
+  let countMap = {}; 
+
+  // 1. 先計算所有隊員的「總完成數」
   rawDataRows.forEach(row => {
-    if (row.event === selectedEvent && statusMap[row.id]) {
-      statusMap[row.id].push(row.event);
+    if (!countMap[row.id]) countMap[row.id] = new Set();
+    countMap[row.id].add(row.event);
+    
+    // 2. 標記是否有參加「當前選擇項目」
+    if (row.event === selectedEvent && eventStatusMap[row.id]) {
+      eventStatusMap[row.id].push(row.event);
     }
   });
 
-  container.innerHTML = `<h3 style='color:var(--primary);'>已參與「${selectedEvent}」之隊員</h3>` + generateGridHtml(statusMap, false);
+  let html = `<h3 style='color:var(--primary);'>已參與「${selectedEvent}」之隊員</h3>`;
+  
+  for (let t = 1; t <= 26; t++) {
+    let teamId = t.toString().padStart(2, '0');
+    html += `<div class="team-row"><div class="team-label">T${teamId}</div><div class="members-container">`;
+    
+    "ABCDEFGHI".split("").forEach(letter => {
+      let id = teamId + letter;
+      let hasDoneThisEvent = eventStatusMap[id].length > 0;
+      let totalCount = countMap[id] ? countMap[id].size : 0;
+      
+      html += `
+        <div class="member-box ${hasDoneThisEvent ? 'is-done' : 'is-none'}">
+          <div style="font-weight:bold; font-size:14px;">${id}</div>
+          <div style="color:var(--text-gold); font-size:10px; margin-top:2px;">Count: ${totalCount}</div>
+        </div>`;
+    });
+    html += `</div></div>`;
+  }
+  container.innerHTML = html;
 }
 
 // --- 渲染視圖 3: 時間分佈 ---
 function renderTimeView() {
   const container = document.getElementById('timeList');
   const range = document.getElementById('timeRangeSelector').value;
-  const customInput = document.getElementById('customTimeInput');
-  
-  // 顯示/隱藏自定義時間輸入框
-  customInput.style.display = (range === 'custom') ? 'block' : 'none';
-
   const now = new Date();
   let filteredData = [...rawDataRows];
 
   if (range === '1h') {
     filteredData = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 3600000);
-  } else if (range === '2h') {
-    filteredData = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 7200000);
   } else if (range === 'custom') {
-    const startTimeVal = document.getElementById('startTime').value;
-    if (startTimeVal) {
-      const [h, m] = startTimeVal.split(':');
+    const startVal = document.getElementById('startTime').value;
+    const endVal = document.getElementById('endTime').value;
+    
+    if (startVal && endVal) {
       const startDate = new Date();
-      startDate.setHours(h, m, 0, 0);
-      filteredData = rawDataRows.filter(row => new Date(row.timestamp) >= startDate);
+      const [sh, sm] = startVal.split(':');
+      startDate.setHours(sh, sm, 0, 0);
+
+      const endDate = new Date();
+      const [eh, em] = endVal.split(':');
+      endDate.setHours(eh, em, 0, 0);
+
+      filteredData = rawDataRows.filter(row => {
+        const rowDate = new Date(row.timestamp);
+        return rowDate >= startDate && rowDate <= endDate;
+      });
     }
   } else {
-    // 預設模式：取最新 50 筆
     filteredData = filteredData.reverse().slice(0, 50);
   }
 
-  // 如果是按時間篩選的模式，也要反轉顯示最新
+  // 統一排序：最新的在最上面
   if (range !== 'all') filteredData.reverse();
 
-  let html = `<h3>找到 ${filteredData.length} 筆符合條件的動態</h3>`;
-  if (filteredData.length === 0) html += "<p style='color:#888;'>此時段內暫無數據</p>";
-
+  let html = `<h3>找到 ${filteredData.length} 筆紀錄</h3>`;
   filteredData.forEach(row => {
-    const timeStr = row.timestamp ? new Date(row.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "未知";
+    const timeStr = row.timestamp ? new Date(row.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : "未知";
     html += `
       <div class="timeline-item">
         <span class="time-stamp">[${timeStr}]</span> 
-        <b style="color:var(--text-gold); font-size:1.1em; margin-left:10px;">${row.id}</b> 
-        已完成 <span style="color:var(--success-border)">${row.event}</span>
+        <b style="color:var(--text-gold); margin-left:10px;">${row.id}</b> 
+        - ${row.event}
       </div>
     `;
   });
