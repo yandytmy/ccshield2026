@@ -4,74 +4,69 @@
     <meta charset="UTF-8">
     <title>CCShield2026 詳細看板</title>
     <style>
-        :root { --success: #43A047; --pending: #444; --bg: #1a1a1a; --primary: #1E88E5; }
+        :root { --success: #43A047; --pending: #444; --bg: #1a1a1a; --primary: #1E88E5; --error: #d32f2f; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; display: flex; height: 100vh; margin: 0; }
         
-        /* 左側列表 */
-        .sidebar { width: 350px; background: #252525; padding: 20px; border-right: 2px solid #333; overflow-y: auto; }
-        /* 右側詳情 */
-        .main-content { flex: 1; padding: 40px; overflow-y: auto; }
+        .sidebar { width: 300px; background: #252525; padding: 20px; border-right: 2px solid #333; overflow-y: auto; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; background: radial-gradient(circle at top right, #2c2c2c, #1a1a1a); }
 
         .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .side-team-box { padding: 15px; border-radius: 8px; background: var(--pending); text-align: center; cursor: pointer; font-weight: bold; }
-        .side-team-box.active { border: 2px solid var(--primary); transform: scale(1.05); }
+        .side-team-box { padding: 15px 5px; border-radius: 8px; background: var(--pending); text-align: center; cursor: pointer; font-weight: bold; transition: 0.3s; border: 2px solid transparent; }
+        .side-team-box.active { border-color: var(--primary); background: #333; transform: scale(1.05); }
         .side-team-box.done { background: var(--success); color: white; }
 
-        .detail-card { background: #333; border-radius: 15px; padding: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .detail-card { background: #333; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 800px; margin: auto; }
+        .member-list { margin-top: 20px; }
         .member-row { display: flex; align-items: center; justify-content: space-between; padding: 15px; border-bottom: 1px solid #444; }
-        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; }
-        .status-ok { background: var(--success); }
-        .status-wait { background: #888; }
+        .status-badge { padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; min-width: 80px; text-align: center; }
+        .status-ok { background: var(--success); box-shadow: 0 0 10px rgba(67, 160, 71, 0.4); }
+        .status-wait { background: #666; color: #ccc; }
         
-        h2 { margin-top: 0; color: var(--primary); }
+        #error-msg { color: var(--error); font-weight: bold; margin-bottom: 10px; display: none; }
+        h2 { margin-top: 0; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .loading-dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); text-shadow: .2em 0 0 rgba(0,0,0,0), .4em 0 0 rgba(0,0,0,0); } 40% { color: white; text-shadow: .2em 0 0 rgba(0,0,0,0), .4em 0 0 rgba(0,0,0,0); } 60% { text-shadow: .2em 0 0 white, .4em 0 0 rgba(0,0,0,0); } 80%, 100% { text-shadow: .2em 0 0 white, .4em 0 0 white; } }
     </style>
 </head>
 <body>
 
     <div class="sidebar">
-        <h3>隊伍總覽 (<span id="count">0</span>/26)</h3>
+        <h3 style="color:var(--primary)">隊伍總覽 (<span id="count">0</span>/26)</h3>
+        <div id="error-msg">⚠️ 連線中斷，正在重試...</div>
         <div id="teamGrid" class="team-grid"></div>
     </div>
 
     <div class="main-content">
         <div id="detailView" class="detail-card">
-            <h2 id="detailTitle">請選擇隊伍</h2>
-            <div id="memberList"></div>
+            <h2 id="detailTitle">正在載入數據<span class="loading-dots"></span></h2>
+            <div id="memberList" class="member-list"></div>
         </div>
     </div>
 
     <script>
-        const API_URL = "你的_報到回應_APPS_SCRIPT_URL"; 
+        // 你的 API 網址
+        const API_URL = "https://script.google.com/macros/s/AKfycbwi4X-ot0tqvH2E07KNQNsVtVtm8yRObSaKCYifaS4JVsueCq4zh23g6pghOZgpljuM/exec"; 
+        
         let globalData = null;
         let currentSelectedTeam = "01";
 
         async function fetchStats() {
             try {
-                const res = await fetch(API_URL);
+                // 使用 no-cache 確保每次都是最新的
+                const res = await fetch(API_URL, { cache: "no-store" });
+                if (!res.ok) throw new Error();
+                
                 globalData = await res.json();
+                
+                document.getElementById('error-msg').style.display = "none";
                 renderSidebar();
                 renderDetail(currentSelectedTeam);
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Fetch error:", e);
+                document.getElementById('error-msg').style.display = "block";
+            }
         }
-        async function fetchStats() {
-            try {
-            const res = await fetch(API_URL);
-            if (!res.ok) throw new Error("網路回應不正常");
-                globalData = await res.json();
-        
-            if (globalData.error) {
-                alert("API 錯誤: " + globalData.error);
-                return;
-            }
 
-            renderSidebar();
-            renderDetail(currentSelectedTeam);
-        } catch (e) {
-            console.error("載入失敗:", e);
-            document.getElementById('detailTitle').innerText = "連線失敗，請檢查 API 網址或網路。";
-            }
-        }                
-        
         function renderSidebar() {
             const container = document.getElementById('teamGrid');
             container.innerHTML = "";
@@ -81,33 +76,47 @@
                 const div = document.createElement('div');
                 div.className = `side-team-box ${isDone ? 'done' : ''} ${t === currentSelectedTeam ? 'active' : ''}`;
                 div.innerText = t;
-                div.onclick = () => { currentSelectedTeam = t; renderSidebar(); renderDetail(t); };
+                div.onclick = () => { 
+                    currentSelectedTeam = t; 
+                    renderSidebar(); 
+                    renderDetail(t); 
+                };
                 container.appendChild(div);
             }
             document.getElementById('count').innerText = globalData.totalTeamsCount;
         }
 
         function renderDetail(teamId) {
-            document.getElementById('detailTitle').innerText = `隊伍 ${teamId} 隊員報到詳情`;
+            document.getElementById('detailTitle').innerHTML = `<span>隊伍 ${teamId} 詳情</span> <small style="font-size:14px; color:#888;">每 30 秒自動更新</small>`;
             const list = document.getElementById('memberList');
             list.innerHTML = "";
             
-            // 假設每隊固定 6 人
-            for (let m = 1; m <= 9; m++) {
-                const isMemberDone = globalData.checkedInList.includes(`${teamId}-${m}`);
+            // 根據你的 API 回報，格式是 "01-OK" 或 "01-FAILED"
+            // 我們過濾出屬於該隊伍的所有紀錄
+            const teamRecords = globalData.checkedInList.filter(item => item.startsWith(teamId + "-"));
+            
+            if (teamRecords.length === 0) {
+                list.innerHTML = "<div style='text-align:center; padding:40px; color:#888;'>此隊伍尚未有任何報到紀錄</div>";
+                return;
+            }
+
+            teamRecords.forEach((record, index) => {
+                const status = record.split('-')[1]; // 取得 "OK" 或 "FAILED"
                 const row = document.createElement('div');
                 row.className = "member-row";
                 row.innerHTML = `
-                    <span>隊員 ${m}</span>
-                    <span class="status-badge ${isMemberDone ? 'status-ok' : 'status-wait'}">
-                        ${isMemberDone ? '✅ 已完成' : '⏳ 待報到'}
+                    <span>隊員項目 ${index + 1}</span>
+                    <span class="status-badge ${status === 'OK' ? 'status-ok' : 'status-wait'}">
+                        ${status === 'OK' ? '✅ 已通過' : '❌ 未通過'}
                     </span>
                 `;
                 list.appendChild(row);
-            }
+            });
         }
 
+        // 啟動
         fetchStats();
+        // 30 秒自動刷新
         setInterval(fetchStats, 30000);
     </script>
 </body>
