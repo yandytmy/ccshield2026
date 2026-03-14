@@ -15,7 +15,7 @@
   --success-border: #43a047;
   --danger: #3d0b0b;
   --danger-border: #e53935;
-  --absent: #2a2a2a; /* 缺席顏色 */
+  --absent: #2a2a2a;
   --text-gold: #FFD54F;
   --primary: #1E88E5;
 }
@@ -49,14 +49,17 @@ body {
 
 .member-box {
   min-width: 80px; min-height: 55px; padding: 5px; border-radius: 6px;
-  display: flex; flex-direction: column; align-items: center; font-size: 12px; border: 2px solid transparent;
+  display: flex; flex-direction: column; align-items: center; font-size: 11px; border: 2px solid transparent;
   justify-content: center; flex-shrink: 0;
 }
 .is-none { background: var(--danger); border-color: var(--danger-border); opacity: 0.6; }
 .is-done { background: var(--success); border-color: var(--success-border); }
-.is-absent { background: var(--absent); border-color: #555; color: #888; } /* 缺席樣式 */
+.is-absent { background: var(--absent); border-color: #555; color: #888; }
 
 .tag { background: rgba(255, 255, 255, 0.2); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin: 1px; }
+
+.control-panel { background: #222; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+select, input { padding: 10px; border-radius: 8px; background: #333; color: white; border: 1px solid #444; }
 
 #lock-screen { text-align: center; padding: 40px 20px; background: #222; border-radius: 10px; margin-top: 20px; }
 </style>
@@ -65,16 +68,17 @@ body {
 <body>
 
 <div class="nav-tabs" id="tabGroup">
-  <button class="tab-btn active" onclick="switchView('event', this)">🎯 項目分佈</button>
-  <button class="tab-btn" onclick="switchView('time', this)">🕒 40m 動態</button>
+  <button class="tab-btn active" onclick="switchView('time', this)">🕒 40m 動態</button>
   <button class="tab-btn" onclick="handleOverallClick(this)">🏠 總覽看板</button>
 </div>
 
 <div id="loading" style="text-align:center; margin-top:50px; color:var(--text-gold);">數據同步中...</div>
 
-<div id="event-view" class="view-section active">
-  <div style="margin-bottom:15px;">
-    <select id="eventSelector" onchange="renderEventView()" style="width:100%; padding:12px; border-radius:8px; background:#333; color:white; font-size:16px;">
+<div id="time-view" class="view-section active">
+  <div class="control-panel">
+    <label style="font-size: 14px; color: var(--text-gold);">查看最近 40 分鐘項目：</label>
+    <select id="timeEventSelector" onchange="renderTimeView()" style="width:100%; margin-top:8px;">
+      <option value="ALL">全部項目 (全名標籤)</option>
       <option value="繩結">項目一：繩結</option>
       <option value="金氏遊戲">項目二：金氏遊戲</option>
       <option value="體育技能">項目三：體育技能</option>
@@ -82,21 +86,6 @@ body {
       <option value="團隊機智">項目五：團隊機智</option>
       <option value="神秘項目">項目六：神秘項目</option>
     </select>
-  </div>
-  <div id="eventGrid"></div>
-</div>
-
-<div id="time-view" class="view-section">
-  <div style="background:#222; padding:15px; border-radius:10px; margin-bottom:20px;">
-    <select id="timeRangeSelector" onchange="toggleTimeInputs()" style="width:100%; padding:10px; border-radius:8px; background:#333; color:white;">
-      <option value="40m">最近 40 分鐘</option>
-      <option value="all">全場網格模式</option>
-      <option value="custom">自定義時段</option>
-    </select>
-    <div id="customTimeInput" style="display:none; margin-top:10px; gap:10px;">
-        <input type="time" id="startTime" onchange="renderTimeView()" style="flex:1; padding:8px;">
-        <input type="time" id="endTime" onchange="renderTimeView()" style="flex:1; padding:8px;">
-    </div>
   </div>
   <div id="timeList"></div>
 </div>
@@ -106,7 +95,23 @@ body {
     <h3 style="color:var(--text-gold);">🔒 管理員驗證</h3>
     <button class="tab-btn" style="background:var(--primary);" onclick="unlockOverall()">輸入解鎖密碼</button>
   </div>
-  <div id="overallGrid" style="display:none;"></div>
+  
+  <div id="overall-content" style="display:none;">
+    <div class="control-panel">
+      <label style="font-size: 14px; color: var(--text-gold);">篩選模式：</label>
+      <select id="overallModeSelector" onchange="toggleOverallMode()" style="width:100%; margin-top:8px;">
+        <option value="all">全場進度總覽 (首字標籤)</option>
+        <option value="custom">自定義時段分析</option>
+      </select>
+      
+      <div id="customTimeInput" style="display:none; margin-top:10px; gap:10px;">
+          <input type="time" id="startTime" onchange="renderOverallView()" style="flex:1;">
+          <span style="align-self:center;">至</span>
+          <input type="time" id="endTime" onchange="renderOverallView()" style="flex:1;">
+      </div>
+    </div>
+    <div id="overallGrid"></div>
+  </div>
 </div>
 
 <script>
@@ -114,7 +119,6 @@ const SS_ID = "1dwK703awpcqW6A3BofDA8cjNSlER2C2Tz5wIu7wr6XQ";
 const SHEET_NAME = "response"; 
 let isUnlocked = false;
 
-// --- 缺席名單 (請在這裡輸入編號) ---
 const ABSENT_LIST = ["03A", "03C"]; 
 
 const TEAM_CONFIG = {};
@@ -139,7 +143,7 @@ function unlockOverall() {
   if (prompt("請輸入密碼：") === "ccshield2026") {
     isUnlocked = true;
     document.getElementById('lock-screen').style.display = 'none';
-    document.getElementById('overallGrid').style.display = 'block';
+    document.getElementById('overall-content').style.display = 'block';
     renderOverallView();
   } else { alert("密碼錯誤！"); }
 }
@@ -151,9 +155,9 @@ function switchView(viewName, btn) {
   btn.classList.add('active');
 }
 
-function toggleTimeInputs() {
-  document.getElementById('customTimeInput').style.display = (document.getElementById('timeRangeSelector').value === 'custom') ? 'flex' : 'none';
-  renderTimeView();
+function toggleOverallMode() {
+  document.getElementById('customTimeInput').style.display = (document.getElementById('overallModeSelector').value === 'custom') ? 'flex' : 'none';
+  renderOverallView();
 }
 
 function fetchData() {
@@ -170,62 +174,57 @@ function fetchData() {
       });
     }
     document.getElementById('loading').style.display = 'none';
-    renderEventView(); renderTimeView();
+    renderTimeView();
     if (isUnlocked) renderOverallView();
   });
 }
 
-function renderOverallView() {
-  if (!isUnlocked) return;
-  let statusMap = buildStatusMap(); 
-  rawDataRows.forEach(row => {
-    if (statusMap[row.id] && !statusMap[row.id].includes(row.event)) statusMap[row.id].push(row.event);
-  });
-  document.getElementById('overallGrid').innerHTML = generateGridHtml(statusMap, true, null);
-}
+function renderTimeView() {
+  const selectedEvent = document.getElementById('timeEventSelector').value;
+  const now = new Date();
+  let filtered = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 2400000);
+  
+  let timeMap = buildStatusMap();
+  let teamCountMap = {}; 
+  Object.keys(TEAM_CONFIG).forEach(tId => teamCountMap[tId] = new Set());
 
-function renderEventView() {
-  const ev = document.getElementById('eventSelector').value;
-  let eventStatusMap = buildStatusMap(); 
-  let teamCountMap = {};
-  Object.keys(TEAM_CONFIG).forEach(tId => teamCountMap[tId] = new Set()); // 使用 Set 確保不重複計數
-
-  rawDataRows.forEach(row => {
-    if (row.event === ev && eventStatusMap[row.id]) {
-      eventStatusMap[row.id].push(ev);
-      teamCountMap[row.id.substring(0, 2)].add(row.id); // Set 會自動過濾掉重複的編號
+  filtered.forEach(row => {
+    if (timeMap[row.id]) {
+      if (selectedEvent === "ALL" || row.event === selectedEvent) {
+        if (!timeMap[row.id].includes(row.event)) timeMap[row.id].push(row.event);
+        teamCountMap[row.id.substring(0, 2)].add(row.id);
+      }
     }
   });
 
-  // 將 Set 的大小轉換為數字
   let finalCounts = {};
   Object.keys(teamCountMap).forEach(t => finalCounts[t] = teamCountMap[t].size);
 
-  document.getElementById('eventGrid').innerHTML = `<h3 style='color:var(--primary);'>🎯 項目：${ev}</h3>` + generateGridHtml(eventStatusMap, false, finalCounts);
+  const showTags = (selectedEvent === "ALL");
+  document.getElementById('timeList').innerHTML = `<h3>🕒 40m 活躍度 (${selectedEvent})</h3>` + generateGridHtml(timeMap, showTags, finalCounts, false);
 }
 
-function renderTimeView() {
-  const container = document.getElementById('timeList');
-  const range = document.getElementById('timeRangeSelector').value;
-  const now = new Date();
+function renderOverallView() {
+  if (!isUnlocked) return;
+  const mode = document.getElementById('overallModeSelector').value;
   let filtered = [...rawDataRows];
 
-  if (range === '40m') filtered = rawDataRows.filter(row => (now - new Date(row.timestamp)) <= 2400000);
-  else if (range === 'custom') {
+  if (mode === 'custom') {
     const s = document.getElementById('startTime').value, e = document.getElementById('endTime').value;
     if (s && e) {
+      const now = new Date();
       const d1 = new Date(now), d2 = new Date(now);
       d1.setHours(s.split(':')[0], s.split(':')[1], 0); d2.setHours(e.split(':')[0], e.split(':')[1], 0);
       filtered = rawDataRows.filter(row => { const d = new Date(row.timestamp); return d >= d1 && d <= d2; });
     }
   }
 
-  let timeMap = buildStatusMap();
+  let statusMap = buildStatusMap();
   filtered.forEach(row => {
-    if (timeMap[row.id] && !timeMap[row.id].includes(row.event)) timeMap[row.id].push(row.event);
+    if (statusMap[row.id] && !statusMap[row.id].includes(row.event)) statusMap[row.id].push(row.event);
   });
-
-  container.innerHTML = `<h3>🕒 該時段活躍網格 (共 ${filtered.length} 筆)</h3>` + generateGridHtml(timeMap, true, null);
+  
+  document.getElementById('overallGrid').innerHTML = `<h3>📊 進度總覽 (僅顯首字)</h3>` + generateGridHtml(statusMap, true, null, true);
 }
 
 function buildStatusMap() {
@@ -234,7 +233,7 @@ function buildStatusMap() {
   return map;
 }
 
-function generateGridHtml(map, showTags, teamCountMap) {
+function generateGridHtml(map, showTags, teamCountMap, shortenTags) {
   let html = "";
   const sortedIds = Object.keys(TEAM_CONFIG).sort((a,b) => parseInt(a) - parseInt(b));
   
@@ -246,23 +245,20 @@ function generateGridHtml(map, showTags, teamCountMap) {
       const id = tId + letter;
       const isAbsent = ABSENT_LIST.includes(id);
       const hasDone = map[id] && map[id].length > 0;
+      let statusClass = isAbsent ? "is-absent" : (hasDone ? "is-done" : "is-none");
       
-      let statusClass = "is-none";
-      let displayText = id;
-      
-      if (isAbsent) {
-        statusClass = "is-absent";
-        displayText = "ABS";
-      } else if (hasDone) {
-        statusClass = "is-done";
+      // 標籤處理：如果是總覽，只取第一個字
+      let tagsHtml = "";
+      if (showTags && map[id]) {
+        tagsHtml = map[id].map(e => {
+          let label = shortenTags ? e.charAt(0) : e;
+          return `<span class="tag">${label}</span>`;
+        }).join('');
       }
       
-      let tags = (showTags && map[id]) ? map[id].map(e => `<span class="tag">${e}</span>`).join('') : "";
-      
-      html += `
-        <div class="member-box ${statusClass}">
-          <div style="font-weight:bold;">${displayText}</div>
-          <div style="display:flex;flex-wrap:wrap;justify-content:center;">${tags}</div>
+      html += `<div class="member-box ${statusClass}">
+          <div style="font-weight:bold;">${isAbsent ? 'ABS ' + id : id}</div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center; gap:2px;">${tagsHtml}</div>
         </div>`;
     });
     html += `</div></div>`;
