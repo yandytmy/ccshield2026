@@ -53,7 +53,25 @@
                 renderDetail(currentSelectedTeam);
             } catch (e) { console.error(e); }
         }
+        async function fetchStats() {
+            try {
+            const res = await fetch(API_URL);
+            if (!res.ok) throw new Error("網路回應不正常");
+                globalData = await res.json();
+        
+            if (globalData.error) {
+                alert("API 錯誤: " + globalData.error);
+                return;
+            }
 
+            renderSidebar();
+            renderDetail(currentSelectedTeam);
+        } catch (e) {
+            console.error("載入失敗:", e);
+            document.getElementById('detailTitle').innerText = "連線失敗，請檢查 API 網址或網路。";
+            }
+        }                
+        
         function renderSidebar() {
             const container = document.getElementById('teamGrid');
             container.innerHTML = "";
